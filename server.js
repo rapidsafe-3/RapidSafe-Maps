@@ -1,4 +1,4 @@
-   const express = require('express');
+const express = require('express');
 const axios = require('axios');
 const admin = require('firebase-admin');
 const cors = require('cors');
@@ -18,7 +18,7 @@ const app = express();
 // Enable CORS so CodePen can communicate with this API
 app.use(cors());
 
-// Middleware to check the API Key (Notice the 'async' keyword here)
+// Middleware to check the API Key
 async function validateApiKey(req, res, next) {
   const apiKey = req.headers['x-api-key'];
 
@@ -78,25 +78,4 @@ app.get('/v1/geocode', validateApiKey, async (req, res) => {
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`RapidMaps API running on port ${PORT}`));                                                            const osmResponse = await axios.get(`https://nominatim.openstreetmap.org/search`, {
-                                                                      params: { q: address, format: 'json', limit: 1 },
-                                                                            headers: { 'User-Agent': 'RapidMaps-API-Gateway' }
-                                                                                });
-
-                                                                                    if (osmResponse.data.length === 0) return res.status(404).json({ error: "Address not found" });
-
-                                                                                        const result = osmResponse.data[0];
-                                                                                            res.json({
-                                                                                                  lat: parseFloat(result.lat),
-                                                                                                        lng: parseFloat(result.lon),
-                                                                                                              formatted_address: result.display_name,
-                                                                                                                    accuracy: "rooftop"
-                                                                                                                        });
-                                                                                                                          } catch (error) {
-                                                                                                                              res.status(500).json({ error: "Internal server error connecting to map provider" });
-                                                                                                                                }
-                                                                                                                                });
-
-                                                                                                                                const PORT = process.env.PORT || 3000;
-                                                                                                                                app.listen(PORT, () => console.log(`RapidMaps API running on port ${PORT}`));
-                                                                                                                                
+app.listen(PORT, () => console.log(`RapidMaps API running on port ${PORT}`));
