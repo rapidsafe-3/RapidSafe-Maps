@@ -1,9 +1,9 @@
-const express = require('express');
+   const express = require('express');
 const axios = require('axios');
 const admin = require('firebase-admin');
-const cors = require('cors'); // <-- 1. IMPORT CORS
+const cors = require('cors');
 
-// Use Environment Variables for security
+// Initialize Firebase Admin securely via Environment Variables
 admin.initializeApp({
   credential: admin.credential.cert({
     projectId: process.env.FIREBASE_PROJECT_ID,
@@ -15,10 +15,10 @@ admin.initializeApp({
 const db = admin.firestore();
 const app = express();
 
-// <-- 2. ACTIVATE CORS (This allows CodePen to talk to your API)
-app.use(cors()); 
+// Enable CORS so CodePen can communicate with this API
+app.use(cors());
 
-// Middleware to check the API Key
+// Middleware to check the API Key (Notice the 'async' keyword here)
 async function validateApiKey(req, res, next) {
   const apiKey = req.headers['x-api-key'];
 
@@ -26,6 +26,7 @@ async function validateApiKey(req, res, next) {
     return res.status(401).json({ error: "Missing x-api-key header" });
   }
 
+  // Look up the key in your Firestore database
   const keySnapshot = await db.collection('apikeys')
     .where('value', '==', apiKey)
     .where('status', '==', 'active')
@@ -35,23 +36,33 @@ async function validateApiKey(req, res, next) {
     return res.status(403).json({ error: "Invalid or disabled API key" });
   }
 
+  // Record usage (increment their request count)
   const keyDoc = keySnapshot.docs[0];
   await keyDoc.ref.update({ requestCount: admin.firestore.FieldValue.increment(1) });
+
   next();
 }
 
+// Your actual API Endpoint (Geocoding)
 app.get('/v1/geocode', validateApiKey, async (req, res) => {
   const { address } = req.query;
-  if (!address) return res.status(400).json({ error: "Missing 'address' parameter" });
+
+  if (!address) {
+    return res.status(400).json({ error: "Missing 'address' parameter" });
+  }
 
   try {
+    // Call the free OpenStreetMap API securely from your server
     const osmResponse = await axios.get(`https://nominatim.openstreetmap.org/search`, {
       params: { q: address, format: 'json', limit: 1 },
       headers: { 'User-Agent': 'RapidMaps-API-Gateway' }
     });
 
-    if (osmResponse.data.length === 0) return res.status(404).json({ error: "Address not found" });
+    if (osmResponse.data.length === 0) {
+      return res.status(404).json({ error: "Address not found" });
+    }
 
+    // Format the response to match your RapidMaps documentation
     const result = osmResponse.data[0];
     res.json({
       lat: parseFloat(result.lat),
@@ -59,25 +70,15 @@ app.get('/v1/geocode', validateApiKey, async (req, res) => {
       formatted_address: result.display_name,
       accuracy: "rooftop"
     });
+
   } catch (error) {
+    console.error(error);
     res.status(500).json({ error: "Internal server error connecting to map provider" });
   }
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`RapidMaps API running on port ${PORT}`));
-
-                                                  const keyDoc = keySnapshot.docs[0];
-                                                    await keyDoc.ref.update({ requestCount: admin.firestore.FieldValue.increment(1) });
-                                                      next();
-                                                      }
-
-                                                      app.get('/v1/geocode', validateApiKey, async (req, res) => {
-                                                        const { address } = req.query;
-                                                          if (!address) return res.status(400).json({ error: "Missing 'address' parameter" });
-
-                                                            try {
-                                                                const osmResponse = await axios.get(`https://nominatim.openstreetmap.org/search`, {
+app.listen(PORT, () => console.log(`RapidMaps API running on port ${PORT}`));                                                            const osmResponse = await axios.get(`https://nominatim.openstreetmap.org/search`, {
                                                                       params: { q: address, format: 'json', limit: 1 },
                                                                             headers: { 'User-Agent': 'RapidMaps-API-Gateway' }
                                                                                 });
