@@ -6,7 +6,7 @@ const nodemailer = require('nodemailer');
 const cron = require('node-cron');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 
-// Initialize Firebase Admin securely via Environment Variables
+// ================= FIREBASE INITIALIZATION =================
 admin.initializeApp({
   credential: admin.credential.cert({
     projectId: process.env.FIREBASE_PROJECT_ID,
@@ -49,12 +49,11 @@ async function sendEmail(to, subject, htmlContent) {
     console.error(`Failed to send email to ${to}:`, error);
   }
 }
-// =====================================================
 
 // ================= GEMINI AI SETUP ===================
 const genAI = process.env.GEMINI_API_KEY ? new GoogleGenerativeAI(process.env.GEMINI_API_KEY) : null;
-// =====================================================
 
+// ================= PLAN LIMITS =======================
 const PLAN_LIMITS = {
   free: 2500,
   starter: 50000,
@@ -63,7 +62,8 @@ const PLAN_LIMITS = {
   enterprise: Infinity
 };
 
-// Middleware to check API Key, Quota, and Billing Expiry
+// ================= MIDDLEWARE ========================
+// Checks API Key validity, Quota Limits, and Billing Expiry
 async function validateApiKey(req, res, next) {
   const apiKey = req.headers['x-api-key'];
 
@@ -71,6 +71,7 @@ async function validateApiKey(req, res, next) {
     return res.status(401).json({ error: "Missing x-api-key header" });
   }
 
+  // Look up key in Firestore
   const keySnapshot = await db.collection('apikeys')
     .where('value', '==', apiKey)
     .where('status', '==', 'active')
@@ -83,6 +84,7 @@ async function validateApiKey(req, res, next) {
   const keyDoc = keySnapshot.docs[0];
   const keyData = keyDoc.data();
 
+  // Fetch User Profile
   const userDoc = await db.collection('users').doc(keyData.uid).get();
   if (!userDoc.exists) {
     return res.status(403).json({ error: "Associated user account not found" });
@@ -126,6 +128,7 @@ async function validateApiKey(req, res, next) {
     });
   }
 
+  // Record usage (increment request count)
   await keyDoc.ref.update({ requestCount: admin.firestore.FieldValue.increment(1) });
   req.userPlan = userPlan;
   
@@ -167,33 +170,40 @@ app.get('/v1/geocode', validateApiKey, async (req, res) => {
   }
 });
 
-// 2. AI Support Chat Endpoint
+// 2. AI Support Chat Endpoint (WITH MEMORY & ERRORS)
 app.post('/v1/support-chat', async (req, res) => {
-  const { message, plan } = req.body;
+  const { message, plan, history = [] } = req.body;
   
   if (!genAI) {
-    return res.json({ reply: "AI Support is currently offline. Please configure GEMINI_API_KEY on the server." });
+    return res.json({ reply: "AI Support is currently offline. GEMINI_API_KEY is missing on the server." });
   }
 
-  const prompt = `
-    You are the 24/7 AI Technical Support Agent for RapidMaps. 
-    The user is currently on the "${plan || 'free'}" plan.
-    Be helpful, brief, and provide code snippets if they ask about geocoding, autocomplete, or matrix APIs. 
-    If they ask about billing, tell them to check their dashboard or upgrade their plan.
-    User Query: ${message}
-  `;
-
   try {
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-    const result = await model.generateContent(prompt);
+    const model = genAI.getGenerativeModel({ 
+      model: "gemini-1.5-flash",
+      systemInstruction: `You are the 24/7 AI Technical Support Agent for RapidMaps. The user is currently on the "${plan || 'free'}" plan. Be helpful, brief, and provide code snippets if they ask about geocoding, autocomplete, or matrix APIs. If they ask about billing, tell them to check their dashboard or upgrade their plan.`
+    });
+
+    // Safely format the chat history for Gemini's memory
+    const formattedHistory = history.map(msg => ({
+      role: msg.role === 'ai' ? 'model' : 'user',
+      parts: [{ text: msg.text || " " }]
+    }));
+
+    const chat = model.startChat({
+      history: formattedHistory
+    });
+
+    const result = await chat.sendMessage(message);
     res.json({ reply: result.response.text() });
   } catch (err) {
-    console.error("Gemini Error:", err);
-    res.status(500).json({ reply: "Sorry, I am experiencing a temporary connection issue. Please try again." });
+    console.error("Gemini Error Details:", err);
+    // Print the EXACT error from Google directly into the chat window
+    res.status(500).json({ reply: `API Error: ${err.message || 'Unknown connection issue'}` });
   }
 });
 
-// 3. Human Escalation Endpoint
+// 3. Human Escalation Endpoint (Business & Enterprise Only)
 app.post('/v1/escalate-support', async (req, res) => {
   const { uid, userEmail, message } = req.body;
 
@@ -235,6 +245,7 @@ cron.schedule('0 0 * * *', async () => {
       const userData = userDoc.data();
       if (!userData.email) return;
 
+      // Get user's API keys to calculate total requests
       const keysSnap = await db.collection('apikeys').where('uid', '==', userDoc.id).get();
       let totalRequests = 0;
       keysSnap.forEach(key => { totalRequests += (key.data().requestCount || 0); });
@@ -254,6 +265,7 @@ cron.schedule('0 0 * * *', async () => {
         <p>Log in to your dashboard to view detailed analytics.</p>
       `;
 
+      // Only send if they've actually used the API to prevent spamming inactive users
       if (totalRequests > 0) {
         await sendEmail(userData.email, "Your RapidMaps Daily Usage Report", emailHtml);
       }
