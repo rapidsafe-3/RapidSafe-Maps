@@ -16,7 +16,6 @@ const app = express();
 
 app.use(cors());
 
-// PLAN LIMITS & FEATURE QUOTAS
 const PLAN_LIMITS = {
   free: 2500,
   starter: 50000,
@@ -25,7 +24,6 @@ const PLAN_LIMITS = {
   enterprise: Infinity
 };
 
-// Middleware: Validate API Key + Enforce Plan Quotas
 async function validateApiKey(req, res, next) {
   const apiKey = req.headers['x-api-key'];
 
@@ -46,7 +44,7 @@ async function validateApiKey(req, res, next) {
   const keyDoc = keySnapshot.docs[0];
   const keyData = keyDoc.data();
 
-  // 2. Fetch User Profile to check plan limit
+  // 2. Fetch User Profile
   const userDoc = await db.collection('users').doc(keyData.uid).get();
   if (!userDoc.exists) {
     return res.status(403).json({ error: "Associated user account not found" });
@@ -54,23 +52,32 @@ async function validateApiKey(req, res, next) {
 
   const userData = userDoc.data();
   const userPlan = (userData.plan || 'free').toLowerCase();
-  const maxQuota = PLAN_LIMITS[userPlan] || PLAN_LIMITS.free;
 
-  // 3. Enforce Quota Check
+  // 3. CHECK SUBSCRIPTION EXPIRY DATE
+  if (userPlan !== 'free' && userData.expiresAt) {
+    const isExpired = new Date() > new Date(userData.expiresAt);
+    if (isExpired && !userData.autopayEnabled) {
+      return res.status(402).json({ 
+        error: `Payment Required: Your ${userPlan.toUpperCase()} subscription expired on ${new Date(userData.expiresAt).toLocaleDateString()}. Please log into your dashboard and complete payment or enable AutoPay to re-enable API access.` 
+      });
+    }
+  }
+
+  // 4. CHECK QUOTA LIMITS
+  const maxQuota = PLAN_LIMITS[userPlan] || PLAN_LIMITS.free;
   const currentRequests = keyData.requestCount || 0;
   if (currentRequests >= maxQuota) {
     return res.status(429).json({ 
-      error: `Rate limit exceeded. Your ${userPlan.toUpperCase()} plan limit is ${maxQuota.toLocaleString()} requests/month. Please upgrade your plan in the dashboard.` 
+      error: `Quota Exceeded: Your ${userPlan.toUpperCase()} plan limit of ${maxQuota.toLocaleString()} requests/month has been reached.` 
     });
   }
 
-  // 4. Increment Request Counter
+  // 5. Increment Usage Counter
   await keyDoc.ref.update({ requestCount: admin.firestore.FieldValue.increment(1) });
   req.userPlan = userPlan;
   next();
 }
 
-// Geocoding Endpoint
 app.get('/v1/geocode', validateApiKey, async (req, res) => {
   const { address } = req.query;
 
@@ -98,63 +105,9 @@ app.get('/v1/geocode', validateApiKey, async (req, res) => {
     });
 
   } catch (error) {
-    console.error(error);
     res.status(500).json({ error: "Internal server error connecting to map provider" });
   }
 });
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`RapidMaps API running on port ${PORT}`));
-
-// PLAN QUOTA LIMITS (Requests per Month)
-const PLAN_LIMITS = {
-  free: 2500,
-  starter: 50000,
-  pro: 500000,
-  business: 3000000,
-  enterprise: Infinity
-};
-
-async function validateApiKey(req, res, next) {
-  const apiKey = req.headers['x-api-key'];
-
-  if (!apiKey) {
-    return res.status(401).json({ error: "Missing x-api-key header" });
-  }
-
-  // 1. Lookup API Key in Firestore
-  const keySnapshot = await db.collection('apikeys')
-    .where('value', '==', apiKey)
-    .where('status', '==', 'active')
-    .get();
-
-  if (keySnapshot.empty) {
-    return res.status(403).json({ error: "Invalid or disabled API key" });
-  }
-
-  const keyDoc = keySnapshot.docs[0];
-  const keyData = keyDoc.data();
-
-  // 2. Check User Plan & AutoPay status
-  const userDoc = await db.collection('users').doc(keyData.uid).get();
-  if (!userDoc.exists) {
-    return res.status(403).json({ error: "Associated user account not found" });
-  }
-
-  const userData = userDoc.data();
-  const userPlan = (userData.plan || 'free').toLowerCase();
-  const maxQuota = PLAN_LIMITS[userPlan] || PLAN_LIMITS.free;
-
-  // 3. Enforce Quota Check
-  const currentRequests = keyData.requestCount || 0;
-  if (currentRequests >= maxQuota) {
-    return res.status(429).json({ 
-      error: `Quota Exceeded: Your ${userPlan.toUpperCase()} plan limit of ${maxQuota.toLocaleString()} requests has been reached. AutoPay will auto-renew on your next billing cycle, or you can upgrade in the dashboard.` 
-    });
-  }
-
-  // 4. Increment Request Count
-  await keyDoc.ref.update({ requestCount: admin.firestore.FieldValue.increment(1) });
-  req.userPlan = userPlan;
-  next();
-}
