@@ -179,8 +179,9 @@ app.post('/v1/support-chat', async (req, res) => {
   }
 
   try {
+    // FIXED HERE: Changed to "gemini-1.5-flash-latest"
     const model = genAI.getGenerativeModel({ 
-      model: "gemini-1.5-flash",
+      model: "gemini-1.5-flash-latest",
       systemInstruction: `You are the 24/7 AI Technical Support Agent for RapidMaps. The user is currently on the "${plan || 'free'}" plan. Be helpful, brief, and provide code snippets if they ask about geocoding, autocomplete, or matrix APIs. If they ask about billing, tell them to check their dashboard or upgrade their plan.`
     });
 
@@ -198,7 +199,6 @@ app.post('/v1/support-chat', async (req, res) => {
     res.json({ reply: result.response.text() });
   } catch (err) {
     console.error("Gemini Error Details:", err);
-    // Print the EXACT error from Google directly into the chat window
     res.status(500).json({ reply: `API Error: ${err.message || 'Unknown connection issue'}` });
   }
 });
