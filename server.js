@@ -3,7 +3,6 @@ const axios = require('axios');
 const admin = require('firebase-admin');
 const cors = require('cors');
 
-// Initialize Firebase Admin securely via Environment Variables
 admin.initializeApp({
   credential: admin.credential.cert({
     projectId: process.env.FIREBASE_PROJECT_ID,
@@ -15,10 +14,18 @@ admin.initializeApp({
 const db = admin.firestore();
 const app = express();
 
-// Enable CORS so CodePen can communicate with this API
 app.use(cors());
 
-// Middleware to check the API Key
+// PLAN LIMITS & FEATURE QUOTAS
+const PLAN_LIMITS = {
+  free: 2500,
+  starter: 50000,
+  pro: 500000,
+  business: 3000000,
+  enterprise: Infinity
+};
+
+// Middleware: Validate API Key + Enforce Plan Quotas
 async function validateApiKey(req, res, next) {
   const apiKey = req.headers['x-api-key'];
 
@@ -26,7 +33,7 @@ async function validateApiKey(req, res, next) {
     return res.status(401).json({ error: "Missing x-api-key header" });
   }
 
-  // Look up the key in your Firestore database
+  // 1. Fetch API Key Document
   const keySnapshot = await db.collection('apikeys')
     .where('value', '==', apiKey)
     .where('status', '==', 'active')
@@ -36,14 +43,34 @@ async function validateApiKey(req, res, next) {
     return res.status(403).json({ error: "Invalid or disabled API key" });
   }
 
-  // Record usage (increment their request count)
   const keyDoc = keySnapshot.docs[0];
-  await keyDoc.ref.update({ requestCount: admin.firestore.FieldValue.increment(1) });
+  const keyData = keyDoc.data();
 
+  // 2. Fetch User Profile to check plan limit
+  const userDoc = await db.collection('users').doc(keyData.uid).get();
+  if (!userDoc.exists) {
+    return res.status(403).json({ error: "Associated user account not found" });
+  }
+
+  const userData = userDoc.data();
+  const userPlan = (userData.plan || 'free').toLowerCase();
+  const maxQuota = PLAN_LIMITS[userPlan] || PLAN_LIMITS.free;
+
+  // 3. Enforce Quota Check
+  const currentRequests = keyData.requestCount || 0;
+  if (currentRequests >= maxQuota) {
+    return res.status(429).json({ 
+      error: `Rate limit exceeded. Your ${userPlan.toUpperCase()} plan limit is ${maxQuota.toLocaleString()} requests/month. Please upgrade your plan in the dashboard.` 
+    });
+  }
+
+  // 4. Increment Request Counter
+  await keyDoc.ref.update({ requestCount: admin.firestore.FieldValue.increment(1) });
+  req.userPlan = userPlan;
   next();
 }
 
-// Your actual API Endpoint (Geocoding)
+// Geocoding Endpoint
 app.get('/v1/geocode', validateApiKey, async (req, res) => {
   const { address } = req.query;
 
@@ -52,7 +79,6 @@ app.get('/v1/geocode', validateApiKey, async (req, res) => {
   }
 
   try {
-    // Call the free OpenStreetMap API securely from your server
     const osmResponse = await axios.get(`https://nominatim.openstreetmap.org/search`, {
       params: { q: address, format: 'json', limit: 1 },
       headers: { 'User-Agent': 'RapidMaps-API-Gateway' }
@@ -62,13 +88,13 @@ app.get('/v1/geocode', validateApiKey, async (req, res) => {
       return res.status(404).json({ error: "Address not found" });
     }
 
-    // Format the response to match your RapidMaps documentation
     const result = osmResponse.data[0];
     res.json({
       lat: parseFloat(result.lat),
       lng: parseFloat(result.lon),
       formatted_address: result.display_name,
-      accuracy: "rooftop"
+      accuracy: "rooftop",
+      plan: req.userPlan
     });
 
   } catch (error) {
