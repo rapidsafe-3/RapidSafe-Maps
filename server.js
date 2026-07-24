@@ -209,3 +209,70 @@ cron.schedule('0 0 * * *', async () => {
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`RapidMaps API running on port ${PORT}`));
+
+const { GoogleGenerativeAI } = require('@google/generative-ai');
+
+// Initialize Gemini (Will gracefully fail if key is missing)
+const genAI = process.env.GEMINI_API_KEY ? new GoogleGenerativeAI(process.env.GEMINI_API_KEY) : null;
+
+// Use JSON body parser for chat requests
+app.use(express.json());
+
+// ================= 1. AI SUPPORT ENDPOINT =================
+app.post('/v1/support-chat', async (req, res) => {
+  const { message, plan } = req.body;
+  
+  if (!genAI) {
+    return res.json({ reply: "AI Support is currently offline. Please configure GEMINI_API_KEY." });
+  }
+
+  const prompt = `
+    You are the 24/7 AI Technical Support Agent for RapidMaps. 
+    The user is currently on the "${plan || 'free'}" plan.
+    Be helpful, brief, and provide code snippets if they ask about geocoding, autocomplete, or matrix APIs. 
+    If they ask about billing, tell them to check their dashboard or upgrade their plan.
+    User Query: ${message}
+  `;
+
+  try {
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const result = await model.generateContent(prompt);
+    res.json({ reply: result.response.text() });
+  } catch (err) {
+    console.error("Gemini Error:", err);
+    res.status(500).json({ reply: "Sorry, I am experiencing a temporary connection issue. Please try again." });
+  }
+});
+
+// ================= 2. HUMAN ESCALATION ENDPOINT =================
+app.post('/v1/escalate-support', async (req, res) => {
+  const { uid, userEmail, message } = req.body;
+
+  if (!uid) return res.status(401).json({ error: "Unauthorized" });
+
+  try {
+    const userDoc = await db.collection('users').doc(uid).get();
+    const userData = userDoc.data();
+    const plan = (userData.plan || 'free').toLowerCase();
+
+    // Block Free, Starter, and Pro users from live human chat
+    if (plan !== 'business' && plan !== 'enterprise') {
+      return res.status(403).json({ error: "24/7 Human Support is only available on Business and Enterprise plans. Please upgrade your plan." });
+    }
+
+    // Email Admin to jump into chat
+    const alertHtml = `
+      <h2>URGENT: Premium Support Request</h2>
+      <p><strong>Plan:</strong> ${plan.toUpperCase()}</p>
+      <p><strong>User:</strong> ${userEmail} (${userData.name})</p>
+      <p><strong>Message:</strong> ${message || 'Requested live agent.'}</p>
+      <p>Please contact them immediately or join the live support terminal.</p>
+    `;
+    
+    await sendEmail(process.env.EMAIL_USER, `[PRIORITY] ${plan.toUpperCase()} Support Request`, alertHtml);
+
+    res.json({ success: true, message: "A dedicated human agent has been notified and will join the chat or email you within 5 minutes." });
+  } catch (error) {
+    res.status(500).json({ error: "Failed to connect to human agent." });
+  }
+});
