@@ -170,7 +170,7 @@ app.get('/v1/geocode', validateApiKey, async (req, res) => {
   }
 });
 
-// 2. AI Support Chat Endpoint (WITH MEMORY & ERRORS)
+// 2. AI Support Chat Endpoint (ULTRA STABLE: gemini-pro)
 app.post('/v1/support-chat', async (req, res) => {
   const { message, plan, history = [] } = req.body;
   
@@ -179,11 +179,8 @@ app.post('/v1/support-chat', async (req, res) => {
   }
 
   try {
-    // FIXED: Changed model name to precisely "gemini-1.5-flash"
-    const model = genAI.getGenerativeModel({ 
-      model: "gemini-1.5-flash",
-      systemInstruction: `You are the 24/7 AI Technical Support Agent for RapidMaps. The user is currently on the "${plan || 'free'}" plan. Be helpful, brief, and provide code snippets if they ask about geocoding, autocomplete, or matrix APIs. If they ask about billing, tell them to check their dashboard or upgrade their plan.`
-    });
+    // FIXED: Using "gemini-pro" which is 100% stable and globally available on all keys
+    const model = genAI.getGenerativeModel({ model: "gemini-pro" });
 
     // Safely format the chat history for Gemini's memory
     const formattedHistory = history.map(msg => ({
@@ -195,7 +192,12 @@ app.post('/v1/support-chat', async (req, res) => {
       history: formattedHistory
     });
 
-    const result = await chat.sendMessage(message);
+    // Inject the persona rules invisibly into the very first message of the conversation
+    const systemRules = `[System Instructions: You are the 24/7 AI Technical Support Agent for RapidMaps. The user is on the "${plan || 'free'}" plan. Be helpful, brief, and provide code snippets if they ask about geocoding or API integration. If they ask about billing, tell them to check their dashboard.]\n\n`;
+    
+    const finalMessage = formattedHistory.length === 0 ? (systemRules + message) : message;
+
+    const result = await chat.sendMessage(finalMessage);
     res.json({ reply: result.response.text() });
   } catch (err) {
     console.error("Gemini Error Details:", err);
