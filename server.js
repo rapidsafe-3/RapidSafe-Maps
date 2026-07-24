@@ -4,6 +4,7 @@ const admin = require('firebase-admin');
 const cors = require('cors');
 const nodemailer = require('nodemailer');
 const cron = require('node-cron');
+const { GoogleGenerativeAI } = require('@google/generative-ai');
 
 // Initialize Firebase Admin securely via Environment Variables
 admin.initializeApp({
@@ -17,8 +18,9 @@ admin.initializeApp({
 const db = admin.firestore();
 const app = express();
 
-// Enable CORS so your frontend can communicate with this API
+// Enable CORS and JSON body parsing (Crucial for AI Support Chat)
 app.use(cors());
+app.use(express.json()); 
 
 // ================= EMAIL TRANSPORTER =================
 const transporter = nodemailer.createTransport({
@@ -30,7 +32,6 @@ const transporter = nodemailer.createTransport({
 });
 
 async function sendEmail(to, subject, htmlContent) {
-  // Failsafe in case environment variables aren't set yet
   if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
     console.warn("Email credentials missing. Skipping email to:", to);
     return;
@@ -50,6 +51,10 @@ async function sendEmail(to, subject, htmlContent) {
 }
 // =====================================================
 
+// ================= GEMINI AI SETUP ===================
+const genAI = process.env.GEMINI_API_KEY ? new GoogleGenerativeAI(process.env.GEMINI_API_KEY) : null;
+// =====================================================
+
 const PLAN_LIMITS = {
   free: 2500,
   starter: 50000,
@@ -58,7 +63,7 @@ const PLAN_LIMITS = {
   enterprise: Infinity
 };
 
-// Middleware to check the API Key
+// Middleware to check API Key, Quota, and Billing Expiry
 async function validateApiKey(req, res, next) {
   const apiKey = req.headers['x-api-key'];
 
@@ -66,7 +71,6 @@ async function validateApiKey(req, res, next) {
     return res.status(401).json({ error: "Missing x-api-key header" });
   }
 
-  // Look up the key in your Firestore database
   const keySnapshot = await db.collection('apikeys')
     .where('value', '==', apiKey)
     .where('status', '==', 'active')
@@ -79,7 +83,6 @@ async function validateApiKey(req, res, next) {
   const keyDoc = keySnapshot.docs[0];
   const keyData = keyDoc.data();
 
-  // Fetch User Profile
   const userDoc = await db.collection('users').doc(keyData.uid).get();
   if (!userDoc.exists) {
     return res.status(403).json({ error: "Associated user account not found" });
@@ -93,7 +96,6 @@ async function validateApiKey(req, res, next) {
     const isExpired = new Date() > new Date(userData.expiresAt);
     if (isExpired && !userData.autopayEnabled) {
       
-      // Send Warning Email
       sendEmail(userData.email, "Action Required: RapidMaps Subscription Expired", 
         `<h2>Your ${userPlan.toUpperCase()} plan has expired.</h2>
          <p>Please log into your dashboard to renew your subscription or enable AutoPay to restore API access.</p>`);
@@ -124,14 +126,15 @@ async function validateApiKey(req, res, next) {
     });
   }
 
-  // Record usage (increment their request count)
   await keyDoc.ref.update({ requestCount: admin.firestore.FieldValue.increment(1) });
   req.userPlan = userPlan;
   
   next();
 }
 
-// Your actual API Endpoint (Geocoding)
+// ================= ENDPOINTS =========================
+
+// 1. Geocoding API
 app.get('/v1/geocode', validateApiKey, async (req, res) => {
   const { address } = req.query;
 
@@ -140,7 +143,6 @@ app.get('/v1/geocode', validateApiKey, async (req, res) => {
   }
 
   try {
-    // Call the free OpenStreetMap API securely from your server
     const osmResponse = await axios.get(`https://nominatim.openstreetmap.org/search`, {
       params: { q: address, format: 'json', limit: 1 },
       headers: { 'User-Agent': 'RapidMaps-API-Gateway' }
@@ -150,7 +152,6 @@ app.get('/v1/geocode', validateApiKey, async (req, res) => {
       return res.status(404).json({ error: "Address not found" });
     }
 
-    // Format the response to match your RapidMaps documentation
     const result = osmResponse.data[0];
     res.json({
       lat: parseFloat(result.lat),
@@ -166,64 +167,12 @@ app.get('/v1/geocode', validateApiKey, async (req, res) => {
   }
 });
 
-// ================= DAILY CRON JOB (Runs every day at Midnight) =================
-cron.schedule('0 0 * * *', async () => {
-  console.log('Running daily usage reports...');
-  try {
-    const usersSnap = await db.collection('users').get();
-    
-    usersSnap.forEach(async (userDoc) => {
-      const userData = userDoc.data();
-      if (!userData.email) return;
-
-      // Get user's API keys to calculate total requests
-      const keysSnap = await db.collection('apikeys').where('uid', '==', userDoc.id).get();
-      let totalRequests = 0;
-      keysSnap.forEach(key => { totalRequests += (key.data().requestCount || 0); });
-
-      const userPlan = (userData.plan || 'free').toLowerCase();
-      const maxQuota = PLAN_LIMITS[userPlan] || 2500;
-
-      const emailHtml = `
-        <h2>RapidMaps Daily Report</h2>
-        <p>Hello ${userData.name},</p>
-        <p>Here is your current API usage summary:</p>
-        <ul>
-          <li><strong>Current Plan:</strong> ${userPlan.toUpperCase()}</li>
-          <li><strong>Total Requests Used:</strong> ${totalRequests.toLocaleString()}</li>
-          <li><strong>Remaining Quota:</strong> ${(maxQuota - totalRequests).toLocaleString()}</li>
-        </ul>
-        <p>Log in to your dashboard to view detailed analytics.</p>
-      `;
-
-      // Only send if they've actually used the API to prevent spamming inactive users
-      if (totalRequests > 0) {
-        await sendEmail(userData.email, "Your RapidMaps Daily Usage Report", emailHtml);
-      }
-    });
-  } catch (error) {
-    console.error('Cron Job Error:', error);
-  }
-});
-// ===============================================================================
-
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`RapidMaps API running on port ${PORT}`));
-
-const { GoogleGenerativeAI } = require('@google/generative-ai');
-
-// Initialize Gemini (Will gracefully fail if key is missing)
-const genAI = process.env.GEMINI_API_KEY ? new GoogleGenerativeAI(process.env.GEMINI_API_KEY) : null;
-
-// Use JSON body parser for chat requests
-app.use(express.json());
-
-// ================= 1. AI SUPPORT ENDPOINT =================
+// 2. AI Support Chat Endpoint
 app.post('/v1/support-chat', async (req, res) => {
   const { message, plan } = req.body;
   
   if (!genAI) {
-    return res.json({ reply: "AI Support is currently offline. Please configure GEMINI_API_KEY." });
+    return res.json({ reply: "AI Support is currently offline. Please configure GEMINI_API_KEY on the server." });
   }
 
   const prompt = `
@@ -244,7 +193,7 @@ app.post('/v1/support-chat', async (req, res) => {
   }
 });
 
-// ================= 2. HUMAN ESCALATION ENDPOINT =================
+// 3. Human Escalation Endpoint
 app.post('/v1/escalate-support', async (req, res) => {
   const { uid, userEmail, message } = req.body;
 
@@ -260,7 +209,6 @@ app.post('/v1/escalate-support', async (req, res) => {
       return res.status(403).json({ error: "24/7 Human Support is only available on Business and Enterprise plans. Please upgrade your plan." });
     }
 
-    // Email Admin to jump into chat
     const alertHtml = `
       <h2>URGENT: Premium Support Request</h2>
       <p><strong>Plan:</strong> ${plan.toUpperCase()}</p>
@@ -276,3 +224,45 @@ app.post('/v1/escalate-support', async (req, res) => {
     res.status(500).json({ error: "Failed to connect to human agent." });
   }
 });
+
+// ================= DAILY CRON JOB ====================
+cron.schedule('0 0 * * *', async () => {
+  console.log('Running daily usage reports...');
+  try {
+    const usersSnap = await db.collection('users').get();
+    
+    usersSnap.forEach(async (userDoc) => {
+      const userData = userDoc.data();
+      if (!userData.email) return;
+
+      const keysSnap = await db.collection('apikeys').where('uid', '==', userDoc.id).get();
+      let totalRequests = 0;
+      keysSnap.forEach(key => { totalRequests += (key.data().requestCount || 0); });
+
+      const userPlan = (userData.plan || 'free').toLowerCase();
+      const maxQuota = PLAN_LIMITS[userPlan] || 2500;
+
+      const emailHtml = `
+        <h2>RapidMaps Daily Report</h2>
+        <p>Hello ${userData.name},</p>
+        <p>Here is your current API usage summary:</p>
+        <ul>
+          <li><strong>Current Plan:</strong> ${userPlan.toUpperCase()}</li>
+          <li><strong>Total Requests Used:</strong> ${totalRequests.toLocaleString()}</li>
+          <li><strong>Remaining Quota:</strong> ${(maxQuota - totalRequests).toLocaleString()}</li>
+        </ul>
+        <p>Log in to your dashboard to view detailed analytics.</p>
+      `;
+
+      if (totalRequests > 0) {
+        await sendEmail(userData.email, "Your RapidMaps Daily Usage Report", emailHtml);
+      }
+    });
+  } catch (error) {
+    console.error('Cron Job Error:', error);
+  }
+});
+// =====================================================
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log(`RapidMaps API running on port ${PORT}`));
