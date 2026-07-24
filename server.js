@@ -179,9 +179,9 @@ app.post('/v1/support-chat', async (req, res) => {
   }
 
   try {
-    // FIXED HERE: Changed to "gemini-1.5-flash-latest"
+    // FIXED: Changed model name to precisely "gemini-1.5-flash"
     const model = genAI.getGenerativeModel({ 
-      model: "gemini-1.5-flash-latest",
+      model: "gemini-1.5-flash",
       systemInstruction: `You are the 24/7 AI Technical Support Agent for RapidMaps. The user is currently on the "${plan || 'free'}" plan. Be helpful, brief, and provide code snippets if they ask about geocoding, autocomplete, or matrix APIs. If they ask about billing, tell them to check their dashboard or upgrade their plan.`
     });
 
