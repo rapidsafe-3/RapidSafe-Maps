@@ -179,8 +179,8 @@ app.post('/v1/support-chat', async (req, res) => {
   }
 
   try {
-    // FIXED: Using "gemini-pro" which is 100% stable and globally available on all keys
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    
+const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
 
     // Safely format the chat history for Gemini's memory
     const formattedHistory = history.map(msg => ({
