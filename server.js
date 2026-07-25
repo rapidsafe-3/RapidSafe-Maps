@@ -1,3 +1,4 @@
+const path = require('path');
 const express = require('express');
 const axios = require('axios');
 const admin = require('firebase-admin');
@@ -290,3 +291,18 @@ cron.schedule('0 0 * * *', async () => {
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`RapidMaps API running on port ${PORT}`));
+// Enable CORS and JSON body parsing (Crucial for AI Support Chat)
+app.use(cors());
+app.use(express.json()); 
+
+// ============================================================
+// CRUCIAL FIX: SERVE THE FRONTEND FILES
+// ============================================================
+// Tell the server to serve all HTML, CSS, and JS files in this folder
+app.use(express.static(__dirname));
+
+// When someone visits the main URL, explicitly send them index.html
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'index.html'));
+});
+// ============================================================
