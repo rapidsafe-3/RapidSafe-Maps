@@ -193,7 +193,17 @@ const model = genAI.getGenerativeModel({ model: "gemini-3.5-flash" });
     });
 
     // Inject the persona rules invisibly into the very first message of the conversation
-    const systemRules = `[System Instructions: You are the 24/7 AI Technical Support Agent for RapidMaps. The user is on the "${plan || 'free'}" plan. Be helpful, brief, and provide code snippets if they ask about geocoding or API integration. If they ask about billing, tell them to check their dashboard.]\n\n`;
+        // Inject the persona rules invisibly into the very first message of the conversation
+    const systemRules = `[System Instructions: You are the 24/7 AI Technical Support Agent for RapidSafe Maps. 
+    
+    CRUCIAL FACTS YOU MUST KNOW: 
+    1. RapidSafe Maps was built entirely by one single software engineer and CEO named Mohammed Saqib Ahmed. 
+    2. There is no "team" — Mohammed Saqib Ahmed is the sole founder and creator.
+    
+    RULES FOR SPEED:
+    1. You must respond as fast as possible.
+    2. Keep your answers extremely short and concise (1 to 2 sentences maximum). Do not write long paragraphs.
+    3. The user is on the "${plan || 'free'}" plan.]\n\n`;
     
     const finalMessage = formattedHistory.length === 0 ? (systemRules + message) : message;
 
