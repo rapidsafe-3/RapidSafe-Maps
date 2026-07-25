@@ -11,27 +11,23 @@ admin.initializeApp({
   credential: admin.credential.cert({
     projectId: process.env.FIREBASE_PROJECT_ID,
     clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-    privateKey: process.env.FIREBASE_PRIVATE_KEY
-      ? process.env.FIREBASE_PRIVATE_KEY.replace(/\
-/g, '
-')
-      : undefined
+    privateKey: process.env.FIREBASE_PRIVATE_KEY ? process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n') : undefined
   })
 });
 
 const db = admin.firestore();
 const app = express();
 
-// Enable CORS and JSON body parsing
+// Enable CORS and JSON body parsing (Crucial for AI Support Chat)
 app.use(cors());
-app.use(express.json());
+app.use(express.json()); 
 
 // ================= EMAIL TRANSPORTER =================
 const transporter = nodemailer.createTransport({
-  service: 'gmail',
+  service: 'gmail', 
   auth: {
     user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS
+    pass: process.env.EMAIL_PASS 
   }
 });
 
@@ -40,12 +36,12 @@ async function sendEmail(to, subject, htmlContent) {
     console.warn("Email credentials missing. Skipping email to:", to);
     return;
   }
-
+  
   try {
     await transporter.sendMail({
       from: `"RapidMaps Support" <${process.env.EMAIL_USER}>`,
-      to,
-      subject,
+      to: to,
+      subject: subject,
       html: htmlContent
     });
     console.log(`Email sent successfully to ${to}`);
@@ -55,12 +51,7 @@ async function sendEmail(to, subject, htmlContent) {
 }
 
 // ================= GEMINI AI SETUP ===================
-const geminiKey =
-  process.env.GEMINI_API_KEY ||
-  process.env.API_KEY ||
-  process.env.GOOGLE_API_KEY;
-
-const genAI = geminiKey ? new GoogleGenerativeAI(geminiKey) : null;
+const genAI = process.env.GEMINI_API_KEY ? new GoogleGenerativeAI(process.env.GEMINI_API_KEY) : null;
 
 // ================= PLAN LIMITS =======================
 const PLAN_LIMITS = {
@@ -72,85 +63,76 @@ const PLAN_LIMITS = {
 };
 
 // ================= MIDDLEWARE ========================
+// Checks API Key validity, Quota Limits, and Billing Expiry
 async function validateApiKey(req, res, next) {
-  try {
-    const apiKey = req.headers['x-api-key'];
+  const apiKey = req.headers['x-api-key'];
 
-    if (!apiKey) {
-      return res.status(401).json({ error: "Missing x-api-key header" });
-    }
+  if (!apiKey) {
+    return res.status(401).json({ error: "Missing x-api-key header" });
+  }
 
-    const keySnapshot = await db.collection('apikeys')
-      .where('value', '==', apiKey)
-      .where('status', '==', 'active')
-      .get();
+  // Look up key in Firestore
+  const keySnapshot = await db.collection('apikeys')
+    .where('value', '==', apiKey)
+    .where('status', '==', 'active')
+    .get();
 
-    if (keySnapshot.empty) {
-      return res.status(403).json({ error: "Invalid or disabled API key" });
-    }
+  if (keySnapshot.empty) {
+    return res.status(403).json({ error: "Invalid or disabled API key" });
+  }
 
-    const keyDoc = keySnapshot.docs[0];
-    const keyData = keyDoc.data();
+  const keyDoc = keySnapshot.docs[0];
+  const keyData = keyDoc.data();
 
-    const userDoc = await db.collection('users').doc(keyData.uid).get();
-    if (!userDoc.exists) {
-      return res.status(403).json({ error: "Associated user account not found" });
-    }
+  // Fetch User Profile
+  const userDoc = await db.collection('users').doc(keyData.uid).get();
+  if (!userDoc.exists) {
+    return res.status(403).json({ error: "Associated user account not found" });
+  }
 
-    const userData = userDoc.data();
-    const userPlan = (userData.plan || 'free').toLowerCase();
+  const userData = userDoc.data();
+  const userPlan = (userData.plan || 'free').toLowerCase();
 
-    if (userPlan !== 'free' && userData.expiresAt) {
-      const isExpired = new Date() > new Date(userData.expiresAt);
-      if (isExpired && !userData.autopayEnabled) {
-        sendEmail(
-          userData.email,
-          "Action Required: RapidMaps Subscription Expired",
-          `<h2>Your ${userPlan.toUpperCase()} plan has expired.</h2>
-           <p>Please log into your dashboard to renew your subscription or enable AutoPay to restore API access.</p>`
-        );
-
-        return res.status(402).json({
-          error: `Payment Required: Your ${userPlan.toUpperCase()} subscription expired. Please log into your dashboard and complete payment or enable AutoPay.`
-        });
-      }
-    }
-
-    const maxQuota = PLAN_LIMITS[userPlan] || PLAN_LIMITS.free;
-    const currentRequests = keyData.requestCount || 0;
-
-    if (currentRequests === Math.floor(maxQuota * 0.8)) {
-      sendEmail(
-        userData.email,
-        "RapidMaps Alert: 80% Quota Reached",
-        `<p>You have used 80% of your ${maxQuota} requests for the month. Consider upgrading your plan to avoid service interruption.</p>`
-      );
-    }
-
-    if (currentRequests >= maxQuota) {
-      if (currentRequests === maxQuota) {
-        sendEmail(
-          userData.email,
-          "RapidMaps Alert: Quota Exceeded",
-          `<p>You have reached your 100% request limit. API access is currently paused until your next billing cycle or plan upgrade.</p>`
-        );
-      }
-
-      return res.status(429).json({
-        error: `Quota Exceeded: Your ${userPlan.toUpperCase()} plan limit of ${maxQuota.toLocaleString()} requests/month has been reached.`
+  // 1. Check Subscription Expiry Date
+  if (userPlan !== 'free' && userData.expiresAt) {
+    const isExpired = new Date() > new Date(userData.expiresAt);
+    if (isExpired && !userData.autopayEnabled) {
+      
+      sendEmail(userData.email, "Action Required: RapidMaps Subscription Expired", 
+        `<h2>Your ${userPlan.toUpperCase()} plan has expired.</h2>
+         <p>Please log into your dashboard to renew your subscription or enable AutoPay to restore API access.</p>`);
+         
+      return res.status(402).json({ 
+        error: `Payment Required: Your ${userPlan.toUpperCase()} subscription expired. Please log into your dashboard and complete payment or enable AutoPay.` 
       });
     }
-
-    await keyDoc.ref.update({
-      requestCount: admin.firestore.FieldValue.increment(1)
-    });
-
-    req.userPlan = userPlan;
-    next();
-  } catch (error) {
-    console.error("validateApiKey error:", error);
-    return res.status(500).json({ error: "Internal server error validating API key" });
   }
+
+  const maxQuota = PLAN_LIMITS[userPlan] || PLAN_LIMITS.free;
+  const currentRequests = keyData.requestCount || 0;
+
+  // 2. Trigger 80% Usage Alert Email
+  if (currentRequests === Math.floor(maxQuota * 0.8)) {
+    sendEmail(userData.email, "RapidMaps Alert: 80% Quota Reached", 
+      `<p>You have used 80% of your ${maxQuota} requests for the month. Consider upgrading your plan to avoid service interruption.</p>`);
+  }
+
+  // 3. Check Quota Limits (100%)
+  if (currentRequests >= maxQuota) {
+    if (currentRequests === maxQuota) {
+      sendEmail(userData.email, "RapidMaps Alert: Quota Exceeded", 
+        `<p>You have reached your 100% request limit. API access is currently paused until your next billing cycle or plan upgrade.</p>`);
+    }
+    return res.status(429).json({ 
+      error: `Quota Exceeded: Your ${userPlan.toUpperCase()} plan limit of ${maxQuota.toLocaleString()} requests/month has been reached.` 
+    });
+  }
+
+  // Record usage (increment request count)
+  await keyDoc.ref.update({ requestCount: admin.firestore.FieldValue.increment(1) });
+  req.userPlan = userPlan;
+  
+  next();
 }
 
 // ================= ENDPOINTS =========================
@@ -164,7 +146,7 @@ app.get('/v1/geocode', validateApiKey, async (req, res) => {
   }
 
   try {
-    const osmResponse = await axios.get('https://nominatim.openstreetmap.org/search', {
+    const osmResponse = await axios.get(`https://nominatim.openstreetmap.org/search`, {
       params: { q: address, format: 'json', limit: 1 },
       headers: { 'User-Agent': 'RapidMaps-API-Gateway' }
     });
@@ -181,63 +163,45 @@ app.get('/v1/geocode', validateApiKey, async (req, res) => {
       accuracy: "rooftop",
       plan: req.userPlan
     });
+
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: "Internal server error connecting to map provider" });
   }
 });
 
-// 2. AI Support Chat Endpoint
+// 2. AI Support Chat Endpoint (ULTRA STABLE: gemini-pro)
 app.post('/v1/support-chat', async (req, res) => {
   const { message, plan, history = [] } = req.body;
-
-  if (!geminiKey || !genAI) {
-    return res.json({
-      reply: "AI Support is currently offline. GEMINI_API_KEY (or API_KEY / GOOGLE_API_KEY) is missing on the server."
-    });
-  }
-
-  if (!message || typeof message !== 'string') {
-    return res.status(400).json({ reply: "Missing or invalid 'message'." });
+  
+  if (!genAI) {
+    return res.json({ reply: "AI Support is currently offline. GEMINI_API_KEY is missing on the server." });
   }
 
   try {
-    const model = genAI.getGenerativeModel({
-      model: "gemini-1.5-flash"
-    });
+    
+const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
 
-    const formattedHistory = Array.isArray(history)
-      ? history
-          .filter(msg => msg && (msg.role === 'ai' || msg.role === 'user') && typeof msg.text === 'string')
-          .map(msg => ({
-            role: msg.role === 'ai' ? 'model' : 'user',
-            parts: [{ text: msg.text }]
-          }))
-      : [];
+    // Safely format the chat history for Gemini's memory
+    const formattedHistory = history.map(msg => ({
+      role: msg.role === 'ai' ? 'model' : 'user',
+      parts: [{ text: msg.text || " " }]
+    }));
 
     const chat = model.startChat({
-      history: formattedHistory,
-      generationConfig: {
-        maxOutputTokens: 1024
-      }
+      history: formattedHistory
     });
 
-    const systemRules = `[System Instructions: You are the 24/7 AI Technical Support Agent for RapidMaps. The user is on the "${plan || 'free'}" plan. Be helpful, brief, and provide code snippets if they ask about geocoding or API integration. If they ask about billing, tell them to check their dashboard.]
-
-`;
-
-    const finalMessage = formattedHistory.length === 0 ? `${systemRules}${message}` : message;
+    // Inject the persona rules invisibly into the very first message of the conversation
+    const systemRules = `[System Instructions: You are the 24/7 AI Technical Support Agent for RapidMaps. The user is on the "${plan || 'free'}" plan. Be helpful, brief, and provide code snippets if they ask about geocoding or API integration. If they ask about billing, tell them to check their dashboard.]\n\n`;
+    
+    const finalMessage = formattedHistory.length === 0 ? (systemRules + message) : message;
 
     const result = await chat.sendMessage(finalMessage);
-    const response = result.response;
-    const text = response.text();
-
-    res.json({ reply: text });
+    res.json({ reply: result.response.text() });
   } catch (err) {
     console.error("Gemini Error Details:", err);
-    res.status(500).json({
-      reply: `API Error: ${err.message || 'Unknown connection issue'}`
-    });
+    res.status(500).json({ reply: `API Error: ${err.message || 'Unknown connection issue'}` });
   }
 });
 
@@ -249,39 +213,26 @@ app.post('/v1/escalate-support', async (req, res) => {
 
   try {
     const userDoc = await db.collection('users').doc(uid).get();
-    if (!userDoc.exists) {
-      return res.status(404).json({ error: "User not found" });
-    }
-
     const userData = userDoc.data();
     const plan = (userData.plan || 'free').toLowerCase();
 
+    // Block Free, Starter, and Pro users from live human chat
     if (plan !== 'business' && plan !== 'enterprise') {
-      return res.status(403).json({
-        error: "24/7 Human Support is only available on Business and Enterprise plans. Please upgrade your plan."
-      });
+      return res.status(403).json({ error: "24/7 Human Support is only available on Business and Enterprise plans. Please upgrade your plan." });
     }
 
     const alertHtml = `
       <h2>URGENT: Premium Support Request</h2>
       <p><strong>Plan:</strong> ${plan.toUpperCase()}</p>
-      <p><strong>User:</strong> ${userEmail} (${userData.name || 'Unknown'})</p>
+      <p><strong>User:</strong> ${userEmail} (${userData.name})</p>
       <p><strong>Message:</strong> ${message || 'Requested live agent.'}</p>
       <p>Please contact them immediately or join the live support terminal.</p>
     `;
+    
+    await sendEmail(process.env.EMAIL_USER, `[PRIORITY] ${plan.toUpperCase()} Support Request`, alertHtml);
 
-    await sendEmail(
-      process.env.EMAIL_USER,
-      `[PRIORITY] ${plan.toUpperCase()} Support Request`,
-      alertHtml
-    );
-
-    res.json({
-      success: true,
-      message: "A dedicated human agent has been notified and will join the chat or email you within 5 minutes."
-    });
+    res.json({ success: true, message: "A dedicated human agent has been notified and will join the chat or email you within 5 minutes." });
   } catch (error) {
-    console.error("Escalation error:", error);
     res.status(500).json({ error: "Failed to connect to human agent." });
   }
 });
@@ -291,26 +242,22 @@ cron.schedule('0 0 * * *', async () => {
   console.log('Running daily usage reports...');
   try {
     const usersSnap = await db.collection('users').get();
-
-    for (const userDoc of usersSnap.docs) {
+    
+    usersSnap.forEach(async (userDoc) => {
       const userData = userDoc.data();
-      if (!userData.email) continue;
+      if (!userData.email) return;
 
-      const keysSnap = await db.collection('apikeys')
-        .where('uid', '==', userDoc.id)
-        .get();
-
+      // Get user's API keys to calculate total requests
+      const keysSnap = await db.collection('apikeys').where('uid', '==', userDoc.id).get();
       let totalRequests = 0;
-      keysSnap.forEach(key => {
-        totalRequests += (key.data().requestCount || 0);
-      });
+      keysSnap.forEach(key => { totalRequests += (key.data().requestCount || 0); });
 
       const userPlan = (userData.plan || 'free').toLowerCase();
-      const maxQuota = PLAN_LIMITS[userPlan] || PLAN_LIMITS.free;
+      const maxQuota = PLAN_LIMITS[userPlan] || 2500;
 
       const emailHtml = `
         <h2>RapidMaps Daily Report</h2>
-        <p>Hello ${userData.name || 'User'},</p>
+        <p>Hello ${userData.name},</p>
         <p>Here is your current API usage summary:</p>
         <ul>
           <li><strong>Current Plan:</strong> ${userPlan.toUpperCase()}</li>
@@ -320,15 +267,15 @@ cron.schedule('0 0 * * *', async () => {
         <p>Log in to your dashboard to view detailed analytics.</p>
       `;
 
+      // Only send if they've actually used the API to prevent spamming inactive users
       if (totalRequests > 0) {
         await sendEmail(userData.email, "Your RapidMaps Daily Usage Report", emailHtml);
       }
-    }
+    });
   } catch (error) {
     console.error('Cron Job Error:', error);
   }
 });
-
 // =====================================================
 
 const PORT = process.env.PORT || 3000;
