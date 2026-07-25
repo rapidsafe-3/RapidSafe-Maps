@@ -102,6 +102,7 @@ body {
   -webkit-font-smoothing: antialiased;
   transition: background var(--dur-med) var(--ease), color var(--dur-med) var(--ease);
   overflow-x: hidden;
+  min-width: 1280px;
 }
 
 img, svg { display: block; max-width: 100%; }
