@@ -689,11 +689,11 @@ p { color: var(--text-secondary); }
 /* ==========================================================
    RapidMaps — Auth Pages (login / signup / forgot password)
    ========================================================== */
-
-body.auth-body {
-  min-height: 100vh;
+.page-auth {
+  min-height: 90vh;
   display: grid;
   grid-template-columns: 1fr 1fr;
+  align-items: stretch;
 }
 
 .auth-side {
@@ -852,8 +852,8 @@ body.auth-body {
 .btn.loading .btn-label { opacity: 0.7; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
-@media (max-width: 900px) {
-  body.auth-body { grid-template-columns: 1fr; }
+@media (max-width: 700px) {
+  .page-auth { grid-template-columns: 1fr; }
   .auth-side { display: none; }
 }
 
@@ -1848,64 +1848,3 @@ body.app-body {
     padding: 24px;
   }
 }
-
-/* ============================================================
-   MOBILE RESPONSIVENESS FIXES (Hero & Showcase)
-   ============================================================ */
-@media (max-width: 980px) {
-  /* Fix the Hero Section overlap */
-  .hero { padding: 120px 0 60px; }
-  .hero-visual { height: auto; padding-bottom: 40px; margin-top: 40px; }
-  .globe-card { position: relative; height: 340px; }
-  .floating-card { 
-    position: relative; 
-    bottom: auto; 
-    left: auto; 
-    margin: -60px auto 0; 
-    width: 90%; 
-    z-index: 2; 
-  }
-  .status-chip { top: -15px; right: 5%; z-index: 3; }
-  .hero-meta { flex-wrap: wrap; gap: 20px; justify-content: center; text-align: center; }
-}
-
-@media (max-width: 860px) {
-  /* Fix the Map Showcase sizing and centering */
-  .showcase-container { gap: 64px; }
-  
-  .showcase-row, 
-  .showcase-row.reverse {
-    flex-direction: column !important;
-    text-align: center !important;
-    gap: 32px !important;
-  }
-
-  .showcase-content {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    max-width: 100% !important;
-  }
-
-  .showcase-content .feature-icon {
-    margin: 0 auto 16px auto;
-  }
-
-  .showcase-content h3 { font-size: 1.8rem; }
-  
-  /* Ensure maps don't collapse into a line */
-  .map-mockup {
-    width: 100% !important;
-    max-width: 100% !important;
-    height: 260px !important;
-    min-height: 260px !important;
-  }
-}
-
-/* Fix text sizing on very small phones */
-@media (max-width: 480px) {
-  h1 { font-size: 2.2rem; }
-  .hero-sub { font-size: 1rem; }
-  .btn { width: 100%; } /* Make buttons full width on small phones */
-}
-
