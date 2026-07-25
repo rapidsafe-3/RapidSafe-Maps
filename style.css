@@ -1848,3 +1848,19 @@ body.app-body {
     padding: 24px;
   }
 }
+/* ============================================================
+   CUSTOM LOGO SIZING
+   ============================================================ */
+.custom-brand-logo {
+  height: 28px;       /* Keeps the logo neatly inside the navbar */
+  width: auto;        /* Maintains the original aspect ratio */
+  display: block;
+  object-fit: contain;
+}
+
+/* Make it slightly larger in the footer and auth sidebars if desired */
+.footer-col .custom-brand-logo,
+.auth-side .custom-brand-logo {
+  height: 36px;
+}
+
