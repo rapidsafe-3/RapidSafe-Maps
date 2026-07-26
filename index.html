@@ -2,18 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-    <meta name="viewport" content="width=1280, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  
-  <script>
-    // 🔒 Lock viewport to Desktop size to force Razorpay Desktop UI & prevent zoom bugs
-    const observer = new MutationObserver(() => {
-      const vp = document.querySelector('meta[name="viewport"]');
-      if (vp && vp.content !== "width=1280, initial-scale=1.0, maximum-scale=1.0, user-scalable=no") {
-        vp.content = "width=1280, initial-scale=1.0, maximum-scale=1.0, user-scalable=no";
-      }
-    });
-    observer.observe(document.head, { childList: true, attributes: true, subtree: true });
-  </script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>RapidSafe Maps — Secure Developer-first Maps Platform</title>
   <meta name="description" content="Affordable, secure Google Maps alternative. Geocoding, routing, places, and static maps APIs built for developers. Ship location features in minutes with RapidSafe Maps.">
   <meta name="keywords" content="RapidSafe Maps, mapping API, geocoding API, google maps alternative, routing API, developer maps">
@@ -2150,8 +2139,6 @@
   </button>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
-<script type="module" src="app.js"></script>
-  <script type="module" src="app.js?v=live"></script>
- <script type="module" src="app-live.js"></script>
+<script type="module" src="app-live.js"></script>
 </body>
 </html>
