@@ -1379,19 +1379,35 @@ function bindFaqAccordion() {
 const YEARLY_PRICES = { Starter: 15, Pro: 63, Business: 199 };
 const MONTHLY_PRICES = { Starter: 19, Pro: 79, Business: 249 };
 
+const PLAN_MAP = {
+  'Starter': { monthly: '1,599', yearly: '14,999' },
+  'Pro': { monthly: '6,499', yearly: '61,999' },
+  'Business': { monthly: '20,499', yearly: '195,999' }
+};
+
 function bindBillingToggle() {
-  const buttons = document.querySelectorAll('.billing-toggle button');
-  if (!buttons.length) return;
-  buttons.forEach((btn) => {
-    btn.addEventListener('click', () => {
-      buttons.forEach((b) => b.classList.remove('active'));
-      btn.classList.add('active');
-      const yearly = btn.dataset.billing === 'yearly';
-      document.querySelectorAll('#page-pricing .price-card').forEach((card) => {
-        const name = card.querySelector('.plan-name')?.textContent.trim();
-        const priceEl = card.querySelector('.price');
-        if (!priceEl || !(name in MONTHLY_PRICES)) return;
-        priceEl.innerHTML = `$${yearly ? YEARLY_PRICES[name] : MONTHLY_PRICES[name]}<span>/mo</span>`;
+  const toggles = document.querySelectorAll('.billing-toggle');
+  if (!toggles.length) return;
+  
+  toggles.forEach(toggleGroup => {
+    const buttons = toggleGroup.querySelectorAll('button');
+    buttons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const cycle = btn.dataset.billing;
+        const isYearly = cycle === 'yearly';
+        
+        // 1. Sync ALL toggle buttons across the entire app simultaneously
+        document.querySelectorAll('.billing-toggle button').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll(`.billing-toggle button[data-billing="${cycle}"]`).forEach(b => b.classList.add('active'));
+
+        // 2. Update the price text on ALL pricing cards
+        document.querySelectorAll('.price-card').forEach((card) => {
+          const name = card.querySelector('.plan-name')?.textContent.trim();
+          const priceEl = card.querySelector('.price');
+          if (!priceEl || !PLAN_MAP[name]) return;
+          
+          priceEl.innerHTML = `₹${isYearly ? PLAN_MAP[name].yearly : PLAN_MAP[name].monthly}<span>/${isYearly ? 'yr' : 'mo'}</span>`;
+        });
       });
     });
   });
