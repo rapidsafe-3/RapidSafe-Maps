@@ -1863,4 +1863,17 @@ body.app-body {
 .auth-side .custom-brand-logo {
   height: 36px;
 }
+/* Prevent Mobile Browser Auto-Zoom on Input Focus & Razorpay */
+input, select, textarea {
+  font-size: 16px !important;
+}
+
+.razorpay-container {
+  position: fixed !important;
+  z-index: 999999 !important;
+}
+
+html, body {
+  touch-action: pan-x pan-y;
+}
 
