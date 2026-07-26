@@ -66,7 +66,7 @@ const PLAN_LIMITS = {
 // ================= MIDDLEWARE ========================
 // Checks API Key validity, Quota Limits, and Billing Expiry
 async function validateApiKey(req, res, next) {
-  const apiKey = req.headers['x-api-key'];
+  const apiKey = req.headers['x-api-key'] || req.query.key;
 
   if (!apiKey) {
     return res.status(401).json({ error: "Missing x-api-key header" });
@@ -168,6 +168,50 @@ app.get('/v1/geocode', validateApiKey, async (req, res) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: "Internal server error connecting to map provider" });
+  }
+});
+
+// ================= GOOGLE-COMPATIBLE MIGRATION ENDPOINT =================
+app.get('/maps/api/geocode/json', validateApiKey, async (req, res) => {
+  const { address } = req.query;
+
+  if (!address) {
+    return res.status(400).json({ status: "INVALID_REQUEST", error_message: "Missing address" });
+  }
+
+  try {
+    const osmResponse = await axios.get(`https://nominatim.openstreetmap.org/search`, {
+      params: { q: address, format: 'json', limit: 1 },
+      headers: { 'User-Agent': 'RapidMaps-API-Gateway' }
+    });
+
+    if (osmResponse.data.length === 0) {
+      return res.json({ results: [], status: "ZERO_RESULTS" });
+    }
+
+    const result = osmResponse.data[0];
+    
+    // Transform our data to perfectly mimic Google's JSON structure
+    res.json({
+      results: [
+        {
+          formatted_address: result.display_name,
+          geometry: {
+            location: {
+              lat: parseFloat(result.lat),
+              lng: parseFloat(result.lon)
+            },
+            location_type: "ROOFTOP"
+          },
+          place_id: `rm_id_${result.place_id}`
+        }
+      ],
+      status: "OK"
+    });
+
+  } catch (error) {
+    console.error(error);
+    res.json({ status: "UNKNOWN_ERROR" });
   }
 });
 
