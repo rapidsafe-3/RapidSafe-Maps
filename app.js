@@ -219,7 +219,7 @@ function navigateTo(page) {
    RAZORPAY PAYMENT & AUTOPAY SUBSCRIPTION MANAGEMENT
    ============================================================ */
 
-const RAZORPAY_KEY = 'rzp_test_TI1ZhvgtafV2i4'; // Update to live key in production
+const RAZORPAY_KEY = 'rzp_live_TI299GdYS7pnE8';
 const MERCHANT_VPA = 'rapidmaps@ptyes';
 
 // Real Price Table in INR
