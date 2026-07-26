@@ -274,17 +274,24 @@ function bindPlanSelection() {
     const isAutoPay = document.getElementById('rzp-enable-autopay').checked;
     closeModal('razorpay-checkout-modal');
 
-    const options = {
+        const options = {
       key: RAZORPAY_KEY,
       amount: activeTargetAmount * 100, // Amount in Paise
       currency: 'INR',
       name: 'RapidMaps Platform',
       description: `${PLAN_PRICES_INR[activeTargetPlan].label} Plan (${activeTargetCycle.toUpperCase()}) ${isAutoPay ? '- AutoPay Enabled' : ''}`,
       image: 'https://cdn-icons-png.flaticon.com/512/854/854878.png',
+      modal: {
+        ondismiss: function() {
+          // Force viewport reset when Razorpay closes
+          window.scrollTo(0, 0);
+        }
+      },
       handler: async function (response) {
         const paymentId = response.razorpay_payment_id || `RZP_PAY_${Date.now()}`;
         await activateUserPlan(activeTargetPlan, activeTargetCycle, activeTargetAmount, isAutoPay, paymentId);
         Toast.success(`Payment Successful! Your ${activeTargetPlan.toUpperCase()} plan is live.`);
+        window.scrollTo(0, 0);
       },
       prefill: {
         name: currentProfile?.name || currentUser.displayName || 'Developer',
