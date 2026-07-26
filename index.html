@@ -758,16 +758,31 @@
     </div>
 
     <div class="dash-grid" id="analytics">
-      <div class="card panel">
-        <div class="panel-head">
-          <h3>Requests — last 7 days</h3>
-          <a href="#">View full analytics</a>
-        </div>
-        <div class="chart-wrap"><canvas id="chart-daily"></canvas></div>
+          <!-- ================= API PLAYGROUND ================= -->
+    <div class="card panel" style="margin-bottom: 24px; border-color: var(--accent);">
+      <div class="panel-head" style="margin-bottom: 16px;">
+        <h3 style="display: flex; align-items: center; gap: 8px;">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><path d="M8 13h2"/><path d="M8 17h2"/><path d="M14 13h2"/></svg>
+          Live API Playground
+        </h3>
+        <span class="pill pill-accent">Test your API Key</span>
       </div>
-      <div class="card panel">
-        <div class="panel-head"><h3>Top endpoints</h3></div>
-        <div class="chart-wrap"><canvas id="chart-endpoints"></canvas></div>
+      <p style="font-size: 0.85rem; margin-bottom: 16px;">Run a live request using your active API key to see how fast RapidMaps responds.</p>
+      
+      <div style="display:flex; gap:12px; margin-bottom:16px; flex-wrap:wrap;">
+        <select id="pg-endpoint" class="select-input" style="width:160px; max-width: 100%;">
+          <option value="/v1/geocode">Geocoding</option>
+        </select>
+        <input type="text" id="pg-query" placeholder="Enter an address (e.g. Times Square, NY)" style="flex:1; padding:10px 14px; border-radius:var(--r-md); border:1px solid var(--border); background:var(--surface);">
+        <button id="pg-run" class="btn btn-primary" style="box-shadow: none;">Send Request</button>
+      </div>
+
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+        <div id="pg-map" style="height:280px; border-radius:var(--r-md); background:var(--surface); border:1px solid var(--border); z-index: 1;"></div>
+        <div class="code-block" style="height:280px; overflow-y:auto; margin: 0; box-shadow: none;">
+          <div class="code-head"><span class="lang" style="color: var(--success);">JSON Response</span></div>
+          <pre id="pg-response" style="margin:0; padding:16px; font-size:0.75rem; color: #a3a3ab;">// Click 'Send Request' to see live data...</pre>
+        </div>
       </div>
     </div>
 
