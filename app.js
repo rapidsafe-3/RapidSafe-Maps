@@ -1864,6 +1864,7 @@ document.addEventListener('DOMContentLoaded', () => {
   bindScrollReveal();
   bindNavbar();
   bindSidebarToggle();
+  bindPlayground();
 
   bindLangTabs();
   bindCoordReadout();
@@ -2229,6 +2230,88 @@ function initShowcaseMaps() {
         });
         resizeObserver.observe(el);
       }
+    }
+  });
+}
+
+// ================= INTERACTIVE PLAYGROUND LOGIC =================
+let playgroundMap = null;
+let playgroundMarker = null;
+
+function bindPlayground() {
+  const runBtn = document.getElementById('pg-run');
+  if (!runBtn) return;
+
+  // Prevent binding multiple times
+  if (runBtn.getAttribute('data-bound')) return;
+  runBtn.setAttribute('data-bound', 'true');
+
+  runBtn.addEventListener('click', async () => {
+    const queryInput = document.getElementById('pg-query').value.trim();
+    const resBox = document.getElementById('pg-response');
+    
+    if (!queryInput) {
+      Toast.error('Please enter an address to search.');
+      return;
+    }
+
+    // 1. Fetch User's Active API Key
+    const { collection, query: firestoreQuery, where, getDocs } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js');
+    const q = firestoreQuery(collection(db, 'apikeys'), where('uid', '==', currentUser.uid), where('status', '==', 'active'));
+    const keysSnapshot = await getDocs(q);
+
+    if (keysSnapshot.empty) {
+      resBox.textContent = "Error: No active API key found. Generate one below.";
+      resBox.style.color = "var(--error)";
+      return;
+    }
+
+    const activeKey = keysSnapshot.docs[0].data().value;
+    runBtn.textContent = 'Running...';
+    resBox.style.color = "#a3a3ab";
+    resBox.textContent = "// Fetching data...";
+
+    try {
+      const startTime = performance.now();
+      
+      // 2. Make the API Call to your Render backend
+      const response = await fetch(`https://rapidmap-api.onrender.com/v1/geocode?address=${encodeURIComponent(queryInput)}`, {
+        method: 'GET',
+        headers: { 'x-api-key': activeKey }
+      });
+
+      const data = await response.json();
+      const endTime = performance.now();
+      
+      // 3. Display formatted JSON
+      resBox.style.color = "#7ee787";
+      resBox.textContent = JSON.stringify(data, null, 2);
+
+      // 4. Update the visual Map
+      if (data.lat && data.lng) {
+        if (!playgroundMap) {
+          playgroundMap = L.map('pg-map').setView([data.lat, data.lng], 14);
+          L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(playgroundMap);
+        } else {
+          playgroundMap.setView([data.lat, data.lng], 14);
+        }
+
+        if (playgroundMarker) playgroundMap.removeLayer(playgroundMarker);
+        playgroundMarker = L.marker([data.lat, data.lng])
+          .addTo(playgroundMap)
+          .bindPopup(`<b>${data.formatted_address}</b><br>Latency: ${Math.round(endTime - startTime)}ms`)
+          .openPopup();
+          
+        setTimeout(() => playgroundMap.invalidateSize(), 100);
+      }
+    } catch (err) {
+      resBox.textContent = String(err);
+      resBox.style.color = "var(--error)";
+    } finally {
+      runBtn.textContent = 'Send Request';
+      
+      // Force UI updates to mimic real usage
+      renderStats();
     }
   });
 }
