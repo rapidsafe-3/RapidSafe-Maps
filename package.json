@@ -6,12 +6,17 @@
   "scripts": {
     "start": "node server.js"
   },
+  "engines": {
+    "node": ">=18.0.0"
+  },
   "dependencies": {
     "@google/generative-ai": "^0.14.0",
     "axios": "^1.7.2",
     "cors": "^2.8.5",
     "express": "^4.19.2",
+    "express-rate-limit": "^7.4.0",
     "firebase-admin": "^12.2.0",
+    "helmet": "^7.1.0",
     "node-cron": "^3.0.3",
     "nodemailer": "^6.9.14"
   }
