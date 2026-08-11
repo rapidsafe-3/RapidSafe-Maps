@@ -60,7 +60,8 @@ const firebaseConfig = {
   projectId: "rapid-map-9",
   storageBucket: "rapid-map-9.firebasestorage.app",
   messagingSenderId: "637528799451",
-  appId: "1:637528799451:web:78074c39087062d5f9f4fe"
+  appId: "1:637528799451:web:78074c39087062d5f9f4fe",
+  measurementId: "G-VRH2NBGTW9"
 };
 
 const app = initializeApp(firebaseConfig);
