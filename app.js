@@ -136,7 +136,7 @@ async function updateUserDocument(uid, data) {
 async function apiKeyRequest(method, path, body) {
   if (!currentUser) throw new Error('Not signed in');
   const idToken = await currentUser.getIdToken();
-  const resp = await fetch(path, {
+  const resp = await fetch('[https://rapidmap-api.onrender.com](https://rapidmap-api.onrender.com)' + path, {
     method,
     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${idToken}` },
     body: body ? JSON.stringify(body) : undefined
@@ -356,7 +356,7 @@ async function openRazorpayModal(planKey, cycle) {
   if (!currentUser) return;
   try {
     const idToken = await currentUser.getIdToken();
-    const orderResp = await fetch('/v1/create-order', {
+    const orderResp = await fetch('[https://rapidmap-api.onrender.com/v1/create-order](https://rapidmap-api.onrender.com/v1/create-order)', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${idToken}` },
       body: JSON.stringify({ planKey, cycle })
@@ -385,7 +385,7 @@ async function verifyAndActivatePlan(razorpayResponse, autopayEnabled) {
   if (!currentUser || !activeTargetPlan) return;
   try {
     const idToken = await currentUser.getIdToken();
-    const verifyResp = await fetch('/v1/verify-payment', {
+    const verifyResp = await fetch('[https://rapidmap-api.onrender.com/v1/verify-payment](https://rapidmap-api.onrender.com/v1/verify-payment)', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${idToken}` },
       body: JSON.stringify({
@@ -416,7 +416,7 @@ async function activateFreePlan() {
   if (!currentUser) return;
   try {
     const idToken = await currentUser.getIdToken();
-    const resp = await fetch('/v1/activate-free-plan', {
+    const resp = await fetch('[https://rapidmap-api.onrender.com/v1/activate-free-plan](https://rapidmap-api.onrender.com/v1/activate-free-plan)', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${idToken}` }
     });
@@ -2167,7 +2167,7 @@ function initSupportChat() {
 
     // Send to Gemini API
     try {
-      const res = await fetch('/v1/support-chat', {
+      const res = await fetch('[https://rapidmap-api.onrender.com/v1/support-chat](https://rapidmap-api.onrender.com/v1/support-chat)', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
