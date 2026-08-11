@@ -1,4 +1,18 @@
 /* ============================================================
+   SECURITY — HTML escaping for any user-supplied string that
+   gets interpolated into innerHTML. Without this, a user's own
+   display name, an API key label, or a chat message can contain
+   HTML/script that executes in another user's (including an
+   ADMIN's) browser session — a stored XSS vulnerability.
+   Always run untrusted text through this before templating it in.
+   ============================================================ */
+function escapeHtml(value) {
+  const div = document.createElement('div');
+  div.textContent = value == null ? '' : String(value);
+  return div.innerHTML;
+}
+
+/* ============================================================
    FIREBASE — bootstrap, auth helpers, Firestore helpers
    (from js/firebase.js)
    ============================================================ */
@@ -114,14 +128,34 @@ async function updateUserDocument(uid, data) {
   return setDoc(doc(db, 'users', uid), data, { merge: true });
 }
 
-async function createApiKeyDoc(uid, keyData) {
-  return addDoc(collection(db, 'apikeys'), {
-    uid,
-    ...keyData,
-    createdAt: serverTimestamp(),
-    status: 'active',
-    requestCount: 0,
+// API keys are now created/rotated/toggled/deleted entirely server-side
+// (see /v1/api-keys* in server.js). The browser never generates a key value
+// or writes one to Firestore directly — it only reads the (masked) list for
+// display, and calls these authenticated endpoints for anything mutating.
+async function apiKeyRequest(method, path, body) {
+  if (!currentUser) throw new Error('Not signed in');
+  const idToken = await currentUser.getIdToken();
+  const resp = await fetch(path, {
+    method,
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${idToken}` },
+    body: body ? JSON.stringify(body) : undefined
   });
+  const result = await resp.json().catch(() => ({}));
+  if (!resp.ok) throw new Error(result.error || 'Request failed');
+  return result;
+}
+
+function createApiKey(data) {
+  return apiKeyRequest('POST', '/v1/api-keys', data);
+}
+function rotateApiKey(keyId) {
+  return apiKeyRequest('POST', `/v1/api-keys/${keyId}/rotate`);
+}
+function setApiKeyStatus(keyId, status) {
+  return apiKeyRequest('PATCH', `/v1/api-keys/${keyId}`, { status });
+}
+function deleteApiKey(keyId) {
+  return apiKeyRequest('DELETE', `/v1/api-keys/${keyId}`);
 }
 
 function watchApiKeys(uid, callback) {
@@ -129,12 +163,14 @@ function watchApiKeys(uid, callback) {
   return onSnapshot(q, (snap) => callback(snap.docs.map((d) => ({ id: d.id, ...d.data() }))));
 }
 
-async function updateApiKey(keyId, data) {
-  return updateDoc(doc(db, 'apikeys', keyId), data);
-}
-
-async function deleteApiKey(keyId) {
-  return deleteDoc(doc(db, 'apikeys', keyId));
+// Shows the plaintext key exactly once, right after creation/rotation — the
+// server never stores it, so this is the only chance the user gets to copy it.
+function showRevealKeyModal(plaintextKey) {
+  const el = document.getElementById('reveal-key-value');
+  if (el) el.textContent = plaintextKey;
+  const copyBtn = document.getElementById('reveal-key-copy');
+  if (copyBtn) copyBtn.onclick = () => copyToClipboard(plaintextKey, 'API key copied');
+  openModal('reveal-key-modal');
 }
 
 function watchRecentUsage(uid, callback, max = 10) {
@@ -220,20 +256,21 @@ function navigateTo(page) {
    ============================================================ */
 
 const RAZORPAY_KEY = 'rzp_live_TI299GdYS7pnE8';
-const MERCHANT_VPA = 'rapidmaps@ptyes';
 
-// Real Price Table in INR
+// Display-only price table (labels + formatting). The server has its own
+// copy of these numbers and is what actually decides what gets charged and
+// which plan gets activated — this object must never be trusted for billing.
 const PLAN_PRICES_INR = {
   free: { monthly: 0, yearly: 0, label: 'Free' },
-  starter: { monthly: 1599, yearly: 14999, label: 'Starter' },
-  pro: { monthly: 6499, yearly: 61999, label: 'Pro' },
-  business: { monthly: 20499, yearly: 195999, label: 'Business' },
+  indie: { monthly: 199, yearly: 1910, label: 'Indie' },
+  builder: { monthly: 499, yearly: 4790, label: 'Builder' },
+  business: { monthly: 20499, yearly: 196790, label: 'Business' },
   enterprise: { monthly: 0, yearly: 0, label: 'Enterprise' }
 };
 
 let activeTargetPlan = null;
 let activeTargetCycle = 'monthly';
-let activeTargetAmount = 0;
+let activeOrder = null;
 
 function bindPlanSelection() {
   // 1. Intercept Plan Selection Buttons with Login Check
@@ -252,8 +289,7 @@ function bindPlanSelection() {
       const cycle = activeBillingBtn ? activeBillingBtn.dataset.billing : 'monthly';
 
       if (selectedPlan === 'free') {
-        await activateUserPlan('free', 'monthly', 0, false, 'FREE_TIER');
-        Toast.success('Switched to Free Plan.');
+        await activateFreePlan();
         return;
       }
 
@@ -262,22 +298,23 @@ function bindPlanSelection() {
         return;
       }
 
-      // Open Razorpay Checkout Setup Modal
-      openRazorpayModal(selectedPlan, cycle);
+      // Ask the server to create a Razorpay order (server decides the price)
+      await openRazorpayModal(selectedPlan, cycle);
     });
   });
 
   // 2. Launch Official Razorpay Payment Window
   document.getElementById('rzp-launch-pay-btn')?.addEventListener('click', () => {
-    if (!activeTargetPlan || !currentUser) return;
+    if (!activeTargetPlan || !currentUser || !activeOrder) return;
 
     const isAutoPay = document.getElementById('rzp-enable-autopay').checked;
     closeModal('razorpay-checkout-modal');
 
-        const options = {
-      key: RAZORPAY_KEY,
-      amount: activeTargetAmount * 100, // Amount in Paise
-      currency: 'INR',
+    const options = {
+      key: activeOrder.keyId,
+      order_id: activeOrder.orderId,
+      amount: activeOrder.amount, // paise, from the server-created order
+      currency: activeOrder.currency,
       name: 'RapidMaps Platform',
       description: `${PLAN_PRICES_INR[activeTargetPlan].label} Plan (${activeTargetCycle.toUpperCase()}) ${isAutoPay ? '- AutoPay Enabled' : ''}`,
       image: 'https://cdn-icons-png.flaticon.com/512/854/854878.png',
@@ -288,9 +325,9 @@ function bindPlanSelection() {
         }
       },
       handler: async function (response) {
-        const paymentId = response.razorpay_payment_id || `RZP_PAY_${Date.now()}`;
-        await activateUserPlan(activeTargetPlan, activeTargetCycle, activeTargetAmount, isAutoPay, paymentId);
-        Toast.success(`Payment Successful! Your ${activeTargetPlan.toUpperCase()} plan is live.`);
+        // Never trust this callback on its own — send it to the server to
+        // verify the signature before the plan is activated.
+        await verifyAndActivatePlan(response, isAutoPay);
         window.scrollTo(0, 0);
       },
       prefill: {
@@ -312,63 +349,85 @@ function bindPlanSelection() {
   });
 }
 
-// Prepare Razorpay Modal Data
-function openRazorpayModal(planKey, cycle) {
-  const planInfo = PLAN_PRICES_INR[planKey] || PLAN_PRICES_INR.free;
-  const amount = cycle === 'yearly' ? planInfo.yearly : planInfo.monthly;
+// Ask the server to create a Razorpay order for this plan/cycle, then show
+// the checkout summary modal. The server — not this code — decides the amount.
+async function openRazorpayModal(planKey, cycle) {
+  if (!currentUser) return;
+  try {
+    const idToken = await currentUser.getIdToken();
+    const orderResp = await fetch('/v1/create-order', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${idToken}` },
+      body: JSON.stringify({ planKey, cycle })
+    });
+    const order = await orderResp.json();
+    if (!orderResp.ok) throw new Error(order.error || 'Could not start checkout');
 
-  activeTargetPlan = planKey;
-  activeTargetCycle = cycle;
-  activeTargetAmount = amount;
+    activeTargetPlan = planKey;
+    activeTargetCycle = cycle;
+    activeOrder = order;
 
-  document.getElementById('rzp-summary-plan').textContent = `${planInfo.label} Plan`;
-  document.getElementById('rzp-summary-cycle').textContent = `${cycle.toUpperCase()} Billing`;
-  document.getElementById('rzp-summary-price').textContent = `₹${amount.toLocaleString('en-IN')}`;
+    const planInfo = PLAN_PRICES_INR[planKey] || PLAN_PRICES_INR.free;
+    document.getElementById('rzp-summary-plan').textContent = `${planInfo.label} Plan`;
+    document.getElementById('rzp-summary-cycle').textContent = `${cycle.toUpperCase()} Billing`;
+    document.getElementById('rzp-summary-price').textContent = `₹${(order.amount / 100).toLocaleString('en-IN')}`;
 
-  openModal('razorpay-checkout-modal');
+    openModal('razorpay-checkout-modal');
+  } catch (err) {
+    Toast.error(err.message || 'Could not start checkout. Please try again.');
+  }
 }
 
-// Update User Document & Set Expiration
-async function activateUserPlan(planKey, cycle, amountINR, autopayEnabled, paymentId) {
-  if (!currentUser) return;
+// Send the Razorpay checkout response to the server for signature
+// verification. The server is the only place a paid plan is ever activated.
+async function verifyAndActivatePlan(razorpayResponse, autopayEnabled) {
+  if (!currentUser || !activeTargetPlan) return;
+  try {
+    const idToken = await currentUser.getIdToken();
+    const verifyResp = await fetch('/v1/verify-payment', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${idToken}` },
+      body: JSON.stringify({
+        razorpay_order_id: razorpayResponse.razorpay_order_id,
+        razorpay_payment_id: razorpayResponse.razorpay_payment_id,
+        razorpay_signature: razorpayResponse.razorpay_signature,
+        planKey: activeTargetPlan,
+        cycle: activeTargetCycle,
+        autopayEnabled
+      })
+    });
+    const result = await verifyResp.json();
+    if (!verifyResp.ok) throw new Error(result.error || 'Payment verification failed');
 
-  const now = new Date();
-  const expiryDate = new Date();
-
-  // Calculate Expiry Date
-  if (cycle === 'yearly') {
-    expiryDate.setFullYear(now.getFullYear() + 1);
-  } else {
-    expiryDate.setMonth(now.getMonth() + 1);
+    await updateSharedUserUI(currentUser);
+    Toast.success(`Payment successful! Your ${activeTargetPlan.toUpperCase()} plan is live.`);
+    navigateTo('dashboard');
+  } catch (err) {
+    Toast.error(err.message || 'We could not confirm your payment. Contact support with your payment ID if money was deducted.');
+  } finally {
+    activeOrder = null;
   }
+}
 
-  const subscriptionPayload = {
-    plan: planKey,
-    billingCycle: cycle,
-    amountINR: amountINR,
-    autopayEnabled: autopayEnabled,
-    paymentStatus: 'PAID',
-    lastPaymentId: paymentId,
-    paidAt: now.toISOString(),
-    expiresAt: planKey === 'free' ? null : expiryDate.toISOString(),
-    updatedAt: now.toISOString()
-  };
+// Free plan needs no payment, but still goes through the server so a user
+// can't set arbitrary billing fields on their own Firestore document.
+async function activateFreePlan() {
+  if (!currentUser) return;
+  try {
+    const idToken = await currentUser.getIdToken();
+    const resp = await fetch('/v1/activate-free-plan', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${idToken}` }
+    });
+    const result = await resp.json();
+    if (!resp.ok) throw new Error(result.error || 'Could not switch plans');
 
-  // 1. Update Firestore
-  await updateUserDocument(currentUser.uid, subscriptionPayload);
-
-  // 2. Log transaction in usage history
-  const { collection, addDoc, serverTimestamp } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js');
-  await addDoc(collection(db, 'usage'), {
-    uid: currentUser.uid,
-    endpoint: `/billing/razorpay-${planKey}`,
-    statusCode: 200,
-    timestamp: serverTimestamp()
-  });
-
-  // 3. Sync UI globally
-  await updateSharedUserUI(currentUser);
-  navigateTo('dashboard');
+    await updateSharedUserUI(currentUser);
+    Toast.success('Switched to Free Plan.');
+    navigateTo('dashboard');
+  } catch (err) {
+    Toast.error(err.message || 'Could not switch to the Free plan.');
+  }
 }
 
 /* ============================================================
@@ -570,7 +629,7 @@ const Toast = {
     const stack = this.ensureStack();
     const toast = document.createElement('div');
     toast.className = `toast ${type}`;
-    toast.innerHTML = `<span>${message}</span>`;
+    toast.innerHTML = `<span>${escapeHtml(message)}</span>`;
     stack.appendChild(toast);
     setTimeout(() => {
       toast.classList.add('leaving');
@@ -646,17 +705,10 @@ function copyToClipboard(text, label = 'Copied to clipboard') {
   });
 }
 
-function generateApiKey(env = 'live') {
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-  let key = '';
-  for (let i = 0; i < 32; i++) key += chars[Math.floor(Math.random() * chars.length)];
-  return `rm_${env}_${key}`;
-}
-
-function maskApiKey(key) {
-  if (!key || key.length < 12) return key;
-  return `${key.slice(0, 11)}${'•'.repeat(18)}${key.slice(-4)}`;
-}
+// NOTE: API keys are generated and hashed server-side (server.js,
+// crypto.randomBytes) and Firestore only ever stores a pre-masked
+// `maskedKey` string — there is intentionally no client-side key generation
+// or masking function anymore. See createApiKey()/rotateApiKey() above.
 
 function formatNumber(n) {
   return new Intl.NumberFormat('en-US').format(n);
@@ -994,11 +1046,11 @@ function keyRowTemplate(key) {
   const domain = key.allowedDomain ? key.allowedDomain : 'All domains';
   
   return `
-    <div class="key-row" data-key-id="${key.id}">
+    <div class="key-row" data-key-id="${escapeHtml(key.id)}">
       <div>
-        <div class="key-name">${key.name || 'Untitled key'}</div>
-        <div class="key-value">${maskApiKey(key.value)}</div>
-        <div class="key-meta">${domain} · ${expiry} · ${formatNumber(key.requestCount || 0)} requests</div>
+        <div class="key-name">${escapeHtml(key.name || 'Untitled key')}</div>
+        <div class="key-value">${escapeHtml(key.maskedKey || '••••••••••••••••••••')}</div>
+        <div class="key-meta">${escapeHtml(domain)} · ${escapeHtml(expiry)} · ${formatNumber(key.requestCount || 0)} requests</div>
       </div>
       <div class="key-row-actions">
         <span class="key-status ${isActive ? 'active' : 'disabled'}">${isActive ? 'Active' : 'Disabled'}</span>
@@ -1042,17 +1094,39 @@ function bindRowActions(keys) {
     const key = keys.find((k) => k.id === id);
     if (!key) return;
 
-    row.querySelector('[data-action="copy"]')?.addEventListener('click', () => copyToClipboard(key.value, 'API key copied'));
-
-    row.querySelector('[data-action="toggle"]')?.addEventListener('click', async () => {
-      const newStatus = key.status === 'active' ? 'disabled' : 'active';
-      await updateApiKey(id, { status: newStatus });
-      Toast.success(`Key ${newStatus === 'active' ? 'enabled' : 'disabled'}`);
+    // The plaintext value isn't stored anywhere after creation, so an
+    // existing row can't be copied — only the masked display value exists.
+    // Rotating gets you a fresh copyable key.
+    row.querySelector('[data-action="copy"]')?.addEventListener('click', () => {
+      Toast.error("Key values aren't stored — rotate this key to get a new one you can copy.");
     });
 
-    row.querySelector('[data-action="regenerate"]')?.addEventListener('click', async () => {
-      await updateApiKey(id, { value: generateApiKey(), requestCount: 0 });
-      Toast.success('Key regenerated — update it wherever it was used');
+    row.querySelector('[data-action="toggle"]')?.addEventListener('click', async (e) => {
+      const btn = e.currentTarget;
+      const newStatus = key.status === 'active' ? 'disabled' : 'active';
+      btn.disabled = true;
+      try {
+        await setApiKeyStatus(id, newStatus);
+        Toast.success(`Key ${newStatus === 'active' ? 'enabled' : 'disabled'}`);
+      } catch (err) {
+        Toast.error(err.message || 'Could not update key');
+      } finally {
+        btn.disabled = false;
+      }
+    });
+
+    row.querySelector('[data-action="regenerate"]')?.addEventListener('click', async (e) => {
+      const btn = e.currentTarget;
+      btn.disabled = true;
+      try {
+        const result = await rotateApiKey(id);
+        showRevealKeyModal(result.key);
+        Toast.success('Key regenerated — the old key stopped working immediately');
+      } catch (err) {
+        Toast.error(err.message || 'Could not regenerate key');
+      } finally {
+        btn.disabled = false;
+      }
     });
 
     row.querySelector('[data-action="delete"]')?.addEventListener('click', () => {
@@ -1064,6 +1138,20 @@ function bindRowActions(keys) {
 
 function openModal(id) { document.getElementById(id)?.classList.add('open'); }
 function closeModal(id) { document.getElementById(id)?.classList.remove('open'); }
+
+// Replaces the onclick="..." attributes that used to live in index.html.
+// Inline event-handler attributes count as inline script for CSP purposes,
+// so a strict script-src (no 'unsafe-inline') requires these to be bound
+// here instead.
+function bindMiscInlineHandlers() {
+  document.getElementById('open-create-key-2')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    document.getElementById('open-create-key')?.click();
+  });
+  document.getElementById('back-to-top-btn')?.addEventListener('click', () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
+}
 
 function bindModals() {
   document.querySelectorAll('[data-close-modal]').forEach((btn) => {
@@ -1077,10 +1165,15 @@ function bindModals() {
   document.getElementById('open-create-key')?.addEventListener('click', () => openModal('create-key-modal'));
   document.getElementById('confirm-delete-key')?.addEventListener('click', async () => {
     if (!pendingDeleteId) return;
-    await deleteApiKey(pendingDeleteId);
-    Toast.success('API key deleted');
-    closeModal('delete-key-modal');
-    pendingDeleteId = null;
+    try {
+      await deleteApiKey(pendingDeleteId);
+      Toast.success('API key deleted');
+    } catch (err) {
+      Toast.error(err.message || 'Could not delete key');
+    } finally {
+      closeModal('delete-key-modal');
+      pendingDeleteId = null;
+    }
   });
 }
 
@@ -1094,18 +1187,18 @@ function bindCreateForm() {
     btn.classList.add('loading');
     btn.disabled = true;
     try {
-      await createApiKeyDoc(currentUser.uid, {
+      const result = await createApiKey({
         name: form.keyName.value.trim() || 'Untitled key',
-        value: generateApiKey(),
         allowedDomain: form.allowedDomain.value.trim(),
         requestLimit: form.requestLimit.value ? Number(form.requestLimit.value) : null,
         expiresAt: form.expiresAt.value || null,
       });
-      Toast.success('API key created');
       form.reset();
       closeModal('create-key-modal');
+      showRevealKeyModal(result.key);
+      Toast.success('API key created');
     } catch (err) {
-      Toast.error('Could not create key — try again');
+      Toast.error(err.message || 'Could not create key — try again');
     } finally {
       btn.classList.remove('loading');
       btn.disabled = false;
@@ -1241,9 +1334,9 @@ function bindDeleteAccount() {
 // Map plan limits so the progress bar calculates correctly
 const PLAN_LIMITS_MAP = {
   free: 2500,
-  starter: 50000,
-  pro: 500000,
-  business: 3000000,
+  indie: 25000,
+  builder: 100000,
+  business: 300000,
   enterprise: 'Unlimited'
 };
 
@@ -1383,13 +1476,13 @@ function bindFaqAccordion() {
   });
 }
 
-const YEARLY_PRICES = { Starter: 15, Pro: 63, Business: 199 };
-const MONTHLY_PRICES = { Starter: 19, Pro: 79, Business: 249 };
-
+// Drives the price text on every .price-card when the monthly/yearly
+// toggle is clicked (see bindBillingToggle below). Kept in sync with
+// PLAN_PRICES_INR above and with server.js's PLAN_PRICES_INR.
 const PLAN_MAP = {
-  'Starter': { monthly: '1,599', yearly: '14,999' },
-  'Pro': { monthly: '6,499', yearly: '61,999' },
-  'Business': { monthly: '20,499', yearly: '195,999' }
+  'Indie': { monthly: '199', yearly: '1,910' },
+  'Builder': { monthly: '499', yearly: '4,790' },
+  'Business': { monthly: '20,499', yearly: '196,790' }
 };
 
 function bindBillingToggle() {
@@ -1716,20 +1809,20 @@ function bindAdminTabs() {
 }
 
 function adminUserRow(u) {
-  const initials = (u.name || u.email || '??').split(' ').map((n) => n[0]).slice(0, 2).join('').toUpperCase();
+  const initials = escapeHtml((u.name || u.email || '??').split(' ').map((n) => n[0]).slice(0, 2).join('').toUpperCase());
   return `
-    <tr data-uid="${u.uid}">
+    <tr data-uid="${escapeHtml(u.uid)}">
       <td>
         <div class="user-row-cell">
           <div class="user-avatar-sm">${initials}</div>
           <div>
-            <div style="font-weight:600;">${u.name || 'Unnamed'}</div>
-            <div style="font-size:0.78rem;color:var(--text-tertiary);">${u.email || ''}</div>
+            <div style="font-weight:600;">${escapeHtml(u.name || 'Unnamed')}</div>
+            <div style="font-size:0.78rem;color:var(--text-tertiary);">${escapeHtml(u.email || '')}</div>
           </div>
         </div>
       </td>
-      <td><span class="role-pill ${u.role === 'admin' ? 'admin' : ''}">${u.role || 'user'}</span></td>
-      <td>${u.plan || 'free'}</td>
+      <td><span class="role-pill ${u.role === 'admin' ? 'admin' : ''}">${escapeHtml(u.role || 'user')}</span></td>
+      <td>${escapeHtml(u.plan || 'free')}</td>
       <td>${u.banned ? '<span class="role-pill banned-pill">Banned</span>' : '<span class="status-pill ok">Active</span>'}</td>
       <td style="text-align:right;">
         <button class="btn btn-secondary btn-sm" data-action="ban">${u.banned ? 'Unban' : 'Ban'}</button>
@@ -1794,8 +1887,8 @@ function bindAnnouncements() {
     if (!items.length) { list.innerHTML = '<p style="font-size:0.85rem;color:var(--text-tertiary);">No announcements published yet.</p>'; return; }
     list.innerHTML = items.map((a) => `
       <div class="announcement-item">
-        <div><h4>${a.title || ''}</h4><p>${a.message || ''}</p></div>
-        <button class="icon-btn btn-sm" style="width:32px;height:32px;" data-id="${a.id}" aria-label="Delete announcement">
+        <div><h4>${escapeHtml(a.title || '')}</h4><p>${escapeHtml(a.message || '')}</p></div>
+        <button class="icon-btn btn-sm" style="width:32px;height:32px;" data-id="${escapeHtml(a.id)}" aria-label="Delete announcement">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
         </button>
       </div>`).join('');
@@ -1828,11 +1921,11 @@ async function loadAdminRevenueAndHealth() {
     const snap = await getDoc(doc(db, 'admin', 'globalStats'));
     const data = snap.exists() ? snap.data() : { revenue: 0, totalRequests: 0 };
     
-    if (rev) rev.textContent = `$${formatNumber(data.revenue)}`;
+    if (rev) rev.textContent = `₹${formatNumber(data.revenue)}`;
     if (req) req.textContent = formatNumber(data.totalRequests);
   } catch (error) {
     console.error("Failed to load admin stats:", error);
-    if (rev) rev.textContent = '$0';
+    if (rev) rev.textContent = '₹0';
     if (req) req.textContent = '0';
   }
 }
@@ -1876,6 +1969,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   bindModals();
   bindCreateForm();
+  bindMiscInlineHandlers();
 
   bindProfileForm();
   bindPasswordForm();
@@ -1973,20 +2067,14 @@ async function performGeocode() {
   searchBtn.disabled = true;
 
   try {
-    const { collection, query: firestoreQuery, where, getDocs, addDoc, serverTimestamp, setDoc, doc, increment } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js');
-    const q = firestoreQuery(collection(db, 'apikeys'), where('uid', '==', currentUser.uid), where('status', '==', 'active'));
-    const keysSnapshot = await getDocs(q);
-
-    if (keysSnapshot.empty) {
-      alert('Access Denied: Invalid or missing API Key. Please generate an active API key.');
-      return;
-    }
-
-    const activeKey = keysSnapshot.docs[0].data().value;
-
-    const response = await fetch(`https://rapidmap-api.onrender.com/v1/geocode?address=${encodeURIComponent(query)}`, {
+    // Routed through the authenticated dashboard proxy — API keys are only
+    // ever stored as a hash now, so the browser can't read a plaintext key
+    // out of Firestore to call /v1/geocode directly. The server looks up
+    // this user's own active key and runs the request on their behalf.
+    const idToken = await currentUser.getIdToken();
+    const response = await fetch(`/v1/dashboard-test-geocode?address=${encodeURIComponent(query)}`, {
       method: 'GET',
-      headers: { 'x-api-key': activeKey }
+      headers: { 'Authorization': `Bearer ${idToken}` }
     });
 
     if (!response.ok) {
@@ -2006,19 +2094,11 @@ async function performGeocode() {
       .bindPopup(`<b>${data.formatted_address}</b><br>Lat: ${lat.toFixed(4)}, Lng: ${lng.toFixed(4)}`)
       .openPopup();
 
-    await addDoc(collection(db, 'usage'), {
-      uid: currentUser.uid,
-      endpoint: '/v1/geocode',
-      statusCode: 200,
-      timestamp: serverTimestamp()
-    });
-
-    await setDoc(doc(db, 'userStats', currentUser.uid), {
-      today: increment(1),
-      month: increment(1),
-      success: 99.8,
-      latency: 41
-    }, { merge: true });
+    // Usage logging now happens server-side in /v1/dashboard-test-geocode
+    // (Admin SDK) — the client is not permitted to write to `usage` or
+    // `userStats` directly under the current Firestore rules, and doing so
+    // here used to throw and land in the catch block below even on a
+    // successful search.
 
   } catch (err) {
     console.error('Geocoding Error:', err);
@@ -2064,8 +2144,8 @@ function initSupportChat() {
     const message = inputEl.value.trim();
     if (!message) return;
 
-    // Append User Message
-    messagesEl.innerHTML += `<div style="background: var(--accent); color: white; padding: 10px 14px; border-radius: 12px 12px 2px 12px; align-self: flex-end; max-width: 85%;">${message}</div>`;
+    // Append User Message (escaped — this is attacker-controllable input)
+    messagesEl.innerHTML += `<div style="background: var(--accent); color: white; padding: 10px 14px; border-radius: 12px 12px 2px 12px; align-self: flex-end; max-width: 85%;">${escapeHtml(message)}</div>`;
     inputEl.value = '';
     messagesEl.scrollTop = messagesEl.scrollHeight;
 
@@ -2086,7 +2166,7 @@ function initSupportChat() {
 
     // Send to Gemini API
     try {
-      const res = await fetch('https://rapidmap-api.onrender.com/v1/support-chat', {
+      const res = await fetch('/v1/support-chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
@@ -2097,8 +2177,13 @@ function initSupportChat() {
       const data = await res.json();
       document.getElementById(loadingId)?.remove();
       
-      // Parse markdown-style formatting from Gemini (basic bold/code parsing)
-      let formattedReply = data.reply.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/`(.*?)`/g, '<code style="background:var(--surface); padding:2px 4px; border-radius:4px;">$1</code>');
+      // Escape the AI's reply FIRST (the model's output is untrusted — a
+      // crafted prompt could otherwise make it return raw HTML/script that
+      // executes in the user's browser), then apply a small, safe subset of
+      // markdown-style formatting on top of the already-escaped text.
+      let formattedReply = escapeHtml(data.reply || '')
+        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+        .replace(/`(.*?)`/g, '<code style="background:var(--surface); padding:2px 4px; border-radius:4px;">$1</code>');
       
       messagesEl.innerHTML += `<div style="background: var(--bg-elevated); border: 1px solid var(--border); padding: 10px 14px; border-radius: 12px 12px 12px 2px; align-self: flex-start; max-width: 85%;">${formattedReply}</div>`;
     } catch (err) {
