@@ -2058,4 +2058,115 @@
         <input type="checkbox" id="rzp-enable-autopay" checked style="margin-top: 3px; accent-color: var(--accent); width: 18px; height: 18px;" />
         <div>
           <strong style="font-size: 0.88rem; color: var(--text-primary); display: block;">Enable AutoPay (Auto-Debit for Rest of Life)</strong>
-          <span style="font-size: 0.76rem; color: var(--text-tertiary);">Automatically debits every b
+          <span style="font-size: 0.76rem; color: var(--text-tertiary);">Automatically debits every billing cycle via UPI / Card. If disabled, API access locks when this period expires.</span>
+        </div>
+      </label>
+    </div>
+
+    <div class="mt-20">
+      <button type="button" class="btn btn-primary btn-block" id="rzp-launch-pay-btn" style="padding: 14px;">
+        Proceed to Pay with Razorpay
+      </button>
+    </div>
+  </div>
+</div>
+  
+  <!-- ================= TERMS & CONDITIONS PAGE ================= -->
+<div id="page-terms" class="page">
+  <nav class="navbar">
+  <a href="index.html" class="nav-logo"><img src="https://i.ibb.co/N68bfnpB/1000081132-removebg-preview.png" alt="RapidSafe Maps Logo" class="custom-brand-logo">RapidSafe Maps</a>
+  </nav>
+  <div class="legal-wrapper">
+    <span class="eyebrow">Legal Agreement</span>
+    <h1>Terms and Conditions</h1>
+    <p class="mt-8">Last updated: July 2026</p>
+    
+    <div class="legal-card">
+      <h3>1. Acceptance of Terms</h3>
+      <p>By creating an account or using RapidSafe Maps APIs, you agree to abide by request quota limits according to your active plan (Free: 2,500 requests/month, Indie: 25,000, Builder: 100,000, Business: 300,000, Enterprise: Unlimited).</p>
+      
+      <h3>2. Usage & Rate Limits</h3>
+      <p>Requests exceeding your designated plan quota will be rejected with HTTP Status Code 429 (Too Many Requests). You may upgrade your plan at any time through your developer dashboard.</p>
+      
+      <h3>3. API Key Responsibility</h3>
+      <p>You are strictly responsible for protecting your generated API keys. Requests authorized using your key count directly against your account usage allowance.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ================= PRIVACY POLICY PAGE ================= -->
+<div id="page-privacy" class="page">
+  <nav class="navbar">
+    <a href="index.html" class="nav-logo"><img src="https://i.ibb.co/N68bfnpB/1000081132-removebg-preview.png" alt="RapidSafe Maps Logo" class="custom-brand-logo">RapidSafe Maps</a>
+  </nav>
+  <div class="legal-wrapper">
+    <span class="eyebrow">Data Protection</span>
+    <h1>Privacy Policy</h1>
+    <p class="mt-8">Last updated: July 2026</p>
+    
+    <div class="legal-card">
+      <h3>1. Data Collection & Storage</h3>
+      <p>We store your secure account details, including your email, full name, company name, and country in Firestore to personalize your dashboard and manage API security.</p>
+      
+      <h3>2. Geocoding & Routing Query Logs</h3>
+      <p>Queries processed by our API Gateway log timestamps, status codes, and endpoint paths solely to render real-time analytics and charts inside your developer dashboard.</p>
+      
+      <h3>3. Enterprise Security</h3>
+      <p>All location intelligence transmissions are encrypted using industry-standard TLS protocols, ensuring maximum privacy for enterprise applications.</p>
+    </div>
+  </div>
+</div>
+  
+  <!-- ================= 24/7 AI & HUMAN SUPPORT WIDGET ================= -->
+<div id="support-widget-container" style="position: fixed; bottom: 24px; right: 24px; z-index: 9999; display: flex; flex-direction: column; align-items: flex-end;">
+  
+    <!-- Chat Window -->
+  <div id="support-chat-window" class="card" style="display: none; width: 360px; max-width: calc(100vw - 48px); height: 520px; max-height: calc(100vh - 120px); flex-direction: column; padding: 0; box-shadow: var(--shadow-lg); border-radius: var(--r-lg); background: var(--bg-elevated); overflow: hidden; margin-bottom: 16px;">
+    
+    <!-- Header -->
+    <div style="background: var(--accent); color: white; padding: 16px; display: flex; justify-content: space-between; align-items: center;">
+      <div>
+        <strong style="display: block; font-size: 1.05rem;">RapidSafe Maps Support</strong>
+        <span id="support-status-text" style="font-size: 0.75rem; opacity: 0.9;">🟢 AI Assistant Online</span>
+      </div>
+      <button id="close-support-chat" style="color: white; font-size: 1.2rem; background: transparent; border: none; cursor: pointer;">✕</button>
+    </div>
+
+    <!-- Messages -->
+    <div id="support-chat-messages" style="flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 12px; font-size: 0.85rem; background: var(--surface);">
+      <div style="background: var(--bg-elevated); border: 1px solid var(--border); padding: 10px 14px; border-radius: 12px 12px 12px 2px; align-self: flex-start; max-width: 85%;">
+        👋 Hi! I'm the RapidSafe Maps AI Assistant. How can I help you today?
+      </div>
+    </div>
+
+    <!-- Premium Actions (Hidden by default) -->
+    <div id="human-escalation-container" style="padding: 8px 16px; background: var(--surface); display: none; border-top: 1px solid var(--border);">
+      <button id="request-human-btn" class="btn btn-secondary btn-sm btn-block" style="font-size: 0.75rem; padding: 8px;">
+        <span class="spinner" style="display:none; width:12px; height:12px;"></span> Request 24/7 Human Agent
+      </button>
+    </div>
+
+    <!-- Input Box -->
+    <div style="display: flex; gap: 8px; padding: 12px 16px; background: var(--bg-elevated); border-top: 1px solid var(--border);">
+      <input type="text" id="support-chat-input" placeholder="Type your message..." style="flex: 1; padding: 10px 14px; border-radius: var(--r-pill); border: 1px solid var(--border); background: var(--surface); font-size: 0.85rem; outline: none;" />
+      <button id="support-chat-send" class="btn btn-primary" style="border-radius: var(--r-pill); padding: 10px 16px; border: none;">Send</button>
+    </div>
+  </div>
+
+  <!-- Toggle Button -->
+  <button id="support-chat-toggle" class="btn btn-primary" style="border-radius: 50%; width: 60px; height: 60px; padding: 0; display: flex; align-items: center; justify-content: center; box-shadow: var(--shadow-accent); font-size: 24px; border: none;">
+    💬
+  </button>
+</div>
+  
+  <!-- Floating Back Button -->
+<button id="floating-back-btn" class="btn btn-secondary" style="position: fixed; bottom: 24px; left: 24px; z-index: 5000; display: none; box-shadow: var(--shadow-lg); border-radius: var(--r-pill);">
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+  Back
+  </button>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script type="module" src="app-live.js"></script>
+  <script type="module" src="app.js"></script>
+</body>
+</html>
