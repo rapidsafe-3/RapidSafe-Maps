@@ -60,8 +60,7 @@ const firebaseConfig = {
   projectId: "rapid-map-9",
   storageBucket: "rapid-map-9.firebasestorage.app",
   messagingSenderId: "637528799451",
-  appId: "1:637528799451:web:78074c39087062d5f9f4fe",
-  measurementId: "G-VRH2NBGTW9"
+  appId: "1:637528799451:web:78074c39087062d5f9f4fe"
 };
 
 const app = initializeApp(firebaseConfig);
@@ -136,7 +135,7 @@ async function updateUserDocument(uid, data) {
 async function apiKeyRequest(method, path, body) {
   if (!currentUser) throw new Error('Not signed in');
   const idToken = await currentUser.getIdToken();
-  const resp = await fetch('[https://rapidmap-api.onrender.com](https://rapidmap-api.onrender.com)' + path, {
+  const resp = await fetch(path, {
     method,
     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${idToken}` },
     body: body ? JSON.stringify(body) : undefined
@@ -148,6 +147,17 @@ async function apiKeyRequest(method, path, body) {
 
 function createApiKey(data) {
   return apiKeyRequest('POST', '/v1/api-keys', data);
+}
+
+// Generic authenticated fetch — attaches the signed-in user's Firebase ID
+// token as a Bearer token. Use this for any server endpoint that needs to
+// know who's calling (support chat, human escalation, the geocode
+// playground) instead of trusting a client-supplied uid/email/plan.
+async function authenticatedFetch(path, options = {}) {
+  if (!currentUser) throw new Error('Not signed in');
+  const idToken = await currentUser.getIdToken();
+  const headers = { ...(options.headers || {}), 'Authorization': `Bearer ${idToken}` };
+  return fetch(path, { ...options, headers });
 }
 function rotateApiKey(keyId) {
   return apiKeyRequest('POST', `/v1/api-keys/${keyId}/rotate`);
@@ -256,7 +266,9 @@ function navigateTo(page) {
    RAZORPAY PAYMENT & AUTOPAY SUBSCRIPTION MANAGEMENT
    ============================================================ */
 
-const RAZORPAY_KEY = 'rzp_live_TI299GdYS7pnE8';
+// Checkout always uses activeOrder.keyId, returned by the server-created
+// Razorpay order (see openRazorpayModal) — never a key hardcoded here.
+const MERCHANT_VPA = 'rapidmaps@ptyes';
 
 // Display-only price table (labels + formatting). The server has its own
 // copy of these numbers and is what actually decides what gets charged and
@@ -273,7 +285,25 @@ let activeTargetPlan = null;
 let activeTargetCycle = 'monthly';
 let activeOrder = null;
 
+// There is no real Razorpay recurring subscription/mandate implementation
+// yet. Rather than let the checkbox imply automatic renewal works, disable
+// it and say so — plans currently must be renewed manually before they
+// expire. Does not touch the surrounding HTML/CSS, only this element's
+// state and text content.
+function initAutoPayUI() {
+  const checkbox = document.getElementById('rzp-enable-autopay');
+  if (!checkbox) return;
+  checkbox.checked = false;
+  checkbox.disabled = true;
+  const label = checkbox.closest('label');
+  const strong = label?.querySelector('strong');
+  const span = label?.querySelector('span');
+  if (strong) strong.textContent = 'AutoPay — coming soon';
+  if (span) span.textContent = 'Automatic renewal is not available yet. Renew manually from the Pricing page before your billing period ends.';
+}
+
 function bindPlanSelection() {
+  initAutoPayUI();
   // 1. Intercept Plan Selection Buttons with Login Check
   document.querySelectorAll('[data-select-plan]').forEach((button) => {
     button.addEventListener('click', async (e) => {
@@ -356,7 +386,7 @@ async function openRazorpayModal(planKey, cycle) {
   if (!currentUser) return;
   try {
     const idToken = await currentUser.getIdToken();
-    const orderResp = await fetch('[https://rapidmap-api.onrender.com/v1/create-order](https://rapidmap-api.onrender.com/v1/create-order)', {
+    const orderResp = await fetch('/v1/create-order', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${idToken}` },
       body: JSON.stringify({ planKey, cycle })
@@ -385,7 +415,7 @@ async function verifyAndActivatePlan(razorpayResponse, autopayEnabled) {
   if (!currentUser || !activeTargetPlan) return;
   try {
     const idToken = await currentUser.getIdToken();
-    const verifyResp = await fetch('[https://rapidmap-api.onrender.com/v1/verify-payment](https://rapidmap-api.onrender.com/v1/verify-payment)', {
+    const verifyResp = await fetch('/v1/verify-payment', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${idToken}` },
       body: JSON.stringify({
@@ -416,7 +446,7 @@ async function activateFreePlan() {
   if (!currentUser) return;
   try {
     const idToken = await currentUser.getIdToken();
-    const resp = await fetch('[https://rapidmap-api.onrender.com/v1/activate-free-plan](https://rapidmap-api.onrender.com/v1/activate-free-plan)', {
+    const resp = await fetch('/v1/activate-free-plan', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${idToken}` }
     });
@@ -521,7 +551,7 @@ function bindRouterLinks() {
   // NEW: Wire the Status Link inside the footer
   document.getElementById('link-status')?.addEventListener('click', (e) => {
     e.preventDefault();
-    Toast.success('🟢 All Systems Operational. 99.99% Uptime.');
+    Toast.success('RapidMaps API is available for early-access testing.');
   });
   
   // Bind the Floating Back Button Click Event
@@ -2072,10 +2102,8 @@ async function performGeocode() {
     // ever stored as a hash now, so the browser can't read a plaintext key
     // out of Firestore to call /v1/geocode directly. The server looks up
     // this user's own active key and runs the request on their behalf.
-    const idToken = await currentUser.getIdToken();
-    const response = await fetch(`/v1/dashboard-test-geocode?address=${encodeURIComponent(query)}`, {
-      method: 'GET',
-      headers: { 'Authorization': `Bearer ${idToken}` }
+    const response = await authenticatedFetch(`/v1/dashboard-test-geocode?address=${encodeURIComponent(query)}`, {
+      method: 'GET'
     });
 
     if (!response.ok) {
@@ -2090,9 +2118,11 @@ async function performGeocode() {
 
     liveMap.setView([lat, lng], 14);
     if (liveMarker) liveMap.removeLayer(liveMarker);
+    // formatted_address comes back from the map provider — escape it
+    // before templating into bindPopup's innerHTML.
     liveMarker = L.marker([lat, lng])
       .addTo(liveMap)
-      .bindPopup(`<b>${data.formatted_address}</b><br>Lat: ${lat.toFixed(4)}, Lng: ${lng.toFixed(4)}`)
+      .bindPopup(`<b>${escapeHtml(data.formatted_address)}</b><br>Lat: ${lat.toFixed(4)}, Lng: ${lng.toFixed(4)}`)
       .openPopup();
 
     // Usage logging now happens server-side in /v1/dashboard-test-geocode
@@ -2145,6 +2175,14 @@ function initSupportChat() {
     const message = inputEl.value.trim();
     if (!message) return;
 
+    // /v1/support-chat requires a signed-in session — the server looks up
+    // the caller's plan itself and never trusts one supplied by the client.
+    if (!currentUser) {
+      messagesEl.innerHTML += `<div style="background: var(--bg-elevated); border: 1px solid var(--border); padding: 10px 14px; border-radius: 12px 12px 12px 2px; align-self: flex-start; max-width: 85%;">Please log in to chat with AI Support.</div>`;
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+      return;
+    }
+
     // Append User Message (escaped — this is attacker-controllable input)
     messagesEl.innerHTML += `<div style="background: var(--accent); color: white; padding: 10px 14px; border-radius: 12px 12px 2px 12px; align-self: flex-end; max-width: 85%;">${escapeHtml(message)}</div>`;
     inputEl.value = '';
@@ -2165,15 +2203,14 @@ function initSupportChat() {
     messagesEl.innerHTML += `<div id="${loadingId}" style="background: var(--bg-elevated); border: 1px solid var(--border); padding: 10px 14px; border-radius: 12px 12px 12px 2px; align-self: flex-start;"><em>AI is typing...</em></div>`;
     messagesEl.scrollTop = messagesEl.scrollHeight;
 
-    // Send to Gemini API
+    // Send to Gemini API. Only the message itself is sent — the server
+    // determines who's asking (and their plan) from the Bearer token,
+    // never from a client-supplied field.
     try {
-      const res = await fetch('[https://rapidmap-api.onrender.com/v1/support-chat](https://rapidmap-api.onrender.com/v1/support-chat)', {
+      const res = await authenticatedFetch('/v1/support-chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          message, 
-          plan: currentProfile?.plan || 'unauthenticated' 
-        })
+        body: JSON.stringify({ message })
       });
       const data = await res.json();
       document.getElementById(loadingId)?.remove();
@@ -2203,12 +2240,13 @@ function initSupportChat() {
     requestHumanBtn.querySelector('.spinner').nextSibling.textContent = ' Contacting Agent...';
 
     try {
-      const res = await fetch('https://rapidmap-api.onrender.com/v1/escalate-support', {
+      // Relative URL (not a hardcoded Render domain) + Bearer auth. The
+      // server determines the caller from the token, not from a
+      // client-supplied uid/email.
+      const res = await authenticatedFetch('/v1/escalate-support', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
-          uid: currentUser.uid, 
-          userEmail: currentUser.email,
           message: "User initiated live support session."
         })
       });
@@ -2340,35 +2378,37 @@ function bindPlayground() {
       Toast.error('Please enter an address to search.');
       return;
     }
-
-    // 1. Fetch User's Active API Key
-    const { collection, query: firestoreQuery, where, getDocs } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js');
-    const q = firestoreQuery(collection(db, 'apikeys'), where('uid', '==', currentUser.uid), where('status', '==', 'active'));
-    const keysSnapshot = await getDocs(q);
-
-    if (keysSnapshot.empty) {
-      resBox.textContent = "Error: No active API key found. Generate one below.";
+    if (!currentUser) {
+      resBox.textContent = 'Error: Please log in to use the live playground.';
       resBox.style.color = "var(--error)";
       return;
     }
 
-    const activeKey = keysSnapshot.docs[0].data().value;
     runBtn.textContent = 'Running...';
     resBox.style.color = "#a3a3ab";
     resBox.textContent = "// Fetching data...";
 
     try {
       const startTime = performance.now();
-      
-      // 2. Make the API Call to your Render backend
-      const response = await fetch(`https://rapidmap-api.onrender.com/v1/geocode?address=${encodeURIComponent(queryInput)}`, {
-        method: 'GET',
-        headers: { 'x-api-key': activeKey }
+
+      // Routed through the authenticated dashboard proxy — API keys are
+      // only ever stored as a hash now, so the browser can't read a
+      // plaintext key out of Firestore to call the API directly. The
+      // server looks up this user's own active key and runs the request
+      // on their behalf.
+      const response = await authenticatedFetch(`/v1/dashboard-test-geocode?address=${encodeURIComponent(queryInput)}`, {
+        method: 'GET'
       });
 
       const data = await response.json();
       const endTime = performance.now();
-      
+
+      if (!response.ok) {
+        resBox.style.color = "var(--error)";
+        resBox.textContent = `Error: ${data.error || 'Request failed'}`;
+        return;
+      }
+
       // 3. Display formatted JSON
       resBox.style.color = "#7ee787";
       resBox.textContent = JSON.stringify(data, null, 2);
@@ -2383,9 +2423,11 @@ function bindPlayground() {
         }
 
         if (playgroundMarker) playgroundMap.removeLayer(playgroundMarker);
+        // formatted_address comes back from the map provider — escape it
+        // before templating into innerHTML/bindPopup.
         playgroundMarker = L.marker([data.lat, data.lng])
           .addTo(playgroundMap)
-          .bindPopup(`<b>${data.formatted_address}</b><br>Latency: ${Math.round(endTime - startTime)}ms`)
+          .bindPopup(`<b>${escapeHtml(data.formatted_address)}</b><br>Latency: ${Math.round(endTime - startTime)}ms`)
           .openPopup();
           
         setTimeout(() => playgroundMap.invalidateSize(), 100);
