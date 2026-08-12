@@ -83,7 +83,20 @@ app.use(helmet({
 }));
 
 // Enable CORS and JSON body parsing (Crucial for AI Support Chat)
-app.use(cors());
+// The public v1 API is meant to be called from arbitrary developer
+// websites using an x-api-key header (no cookies involved), so it needs to
+// stay reachable cross-origin by default. CORS_ORIGINS lets an operator
+// lock this down to a specific allowlist later without a code change.
+// credentials stays false either way — nothing here relies on cookies, and
+// combining a wide-open origin with credentials:true would be a CSRF risk.
+const configuredCorsOrigins = (process.env.CORS_ORIGINS || '')
+  .split(',')
+  .map((o) => o.trim())
+  .filter(Boolean);
+app.use(cors({
+  origin: configuredCorsOrigins.length ? configuredCorsOrigins : true,
+  credentials: false
+}));
 app.use(express.json({ limit: '100kb' })); // cap body size — prevents trivial memory-exhaustion abuse
 
 // ================= RATE LIMITING =================
@@ -134,6 +147,28 @@ function maskApiKey(key) {
 function currentBillingPeriod() {
   const d = new Date();
   return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
+}
+
+// ================= DAILY REQUEST LIMIT (PER API KEY) =================
+// The dashboard labels this field "Request limit / day" — it must actually
+// be enforced, not just stored. Resets automatically at 00:00 UTC because
+// the counter carries the UTC date it belongs to (same lazy-reset pattern
+// as the monthly quota above), so there's no separate reset job to depend on.
+function currentUtcDateString() {
+  return new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+}
+
+// ================= MAPS PROVIDER ABSTRACTION =================
+// Nominatim (used below by geocodeAddress/the /v1/geocode endpoint) is a
+// public, rate-limited service whose usage policy does not permit being
+// resold as a paid commercial API — see the throttle/cache comments further
+// down. It is kept ONLY as an explicit early-access/free-tier beta path.
+// A real commercial launch needs an upstream provider whose terms permit
+// resale. MAPS_PROVIDER_MODE is the single switch that flips this: nothing
+// else in the app needs to change once a compliant adapter is wired in here.
+const MAPS_PROVIDER_MODE = process.env.MAPS_PROVIDER_MODE === 'compliant' ? 'compliant' : 'beta';
+function isCompliantMapsProviderConfigured() {
+  return MAPS_PROVIDER_MODE === 'compliant';
 }
 
 // ================= PER-API-KEY RATE LIMITING =================
@@ -303,6 +338,19 @@ async function authorizeApiKeyDoc(keyDoc, keyHashForRateLimit) {
     }
   }
 
+  // 1b. Paid geocoding requires an upstream provider whose terms permit
+  // resale. Nominatim is kept only as an explicit free-tier/early-access
+  // beta path — see MAPS_PROVIDER_MODE above. Checked here, before any
+  // quota is consumed, so a blocked request never costs the key a request.
+  if (userPlan !== 'free' && !isCompliantMapsProviderConfigured()) {
+    return {
+      error: {
+        status: 503,
+        body: { error: 'Paid geocoding is not available yet — RapidSafe Maps has not configured a compliant production maps provider. Early-access geocoding remains available on the Free plan.' }
+      }
+    };
+  }
+
   // 2. Per-key rate limit (throughput ceiling — separate from monthly quota)
   const rate = checkKeyRateLimit(keyHashForRateLimit, userPlan);
   if (!rate.ok) {
@@ -321,16 +369,40 @@ async function authorizeApiKeyDoc(keyDoc, keyHashForRateLimit) {
   const maxQuota = PLAN_LIMITS[userPlan] || PLAN_LIMITS.free;
   const period = currentBillingPeriod();
   let quotaExceeded = false;
+  let dailyExceeded = false;
   let requestsAfter = 0;
 
   await db.runTransaction(async (tx) => {
     const snap = await tx.get(keyDoc.ref);
     const data = snap.data();
+
+    // Daily limit — only enforced if this key was created with one set.
+    const today = currentUtcDateString();
+    const dailyCountBefore = data.requestDay === today ? (data.requestCountDay || 0) : 0;
+    if (data.requestLimit != null && dailyCountBefore >= data.requestLimit) {
+      dailyExceeded = true;
+      return;
+    }
+
     const currentRequests = data.quotaPeriod === period ? (data.requestCount || 0) : 0;
     if (currentRequests >= maxQuota) { quotaExceeded = true; return; }
     requestsAfter = currentRequests + 1;
-    tx.update(keyDoc.ref, { requestCount: requestsAfter, quotaPeriod: period });
+    tx.update(keyDoc.ref, {
+      requestCount: requestsAfter,
+      quotaPeriod: period,
+      requestCountDay: dailyCountBefore + 1,
+      requestDay: today
+    });
   });
+
+  if (dailyExceeded) {
+    return {
+      error: {
+        status: 429,
+        body: { error: `Daily request limit of ${keyData.requestLimit.toLocaleString()} reached for this API key. It resets at 00:00 UTC.` }
+      }
+    };
+  }
 
   if (quotaExceeded) {
     return {
@@ -380,6 +452,26 @@ async function validateApiKey(req, res, next) {
   }
 
   const keyDoc = keySnapshot.docs[0];
+
+  // Domain restriction (optional, key-level) — mirrors the "HTTP referrer"
+  // restriction pattern on Google Maps API keys. Only enforced when the
+  // request actually carries an Origin/Referer header, i.e. it came from a
+  // browser. A server-to-server call has neither and is let through
+  // unrestricted, since there's no "website" to restrict in that case.
+  const allowedDomain = keyDoc.data().allowedDomain;
+  if (allowedDomain) {
+    const originHeader = req.headers.origin || req.headers.referer;
+    if (originHeader) {
+      let originHost = null;
+      try { originHost = new URL(originHeader).hostname.toLowerCase(); } catch (_) { /* malformed header */ }
+      const normalizedAllowed = allowedDomain.replace(/^https?:\/\//i, '').replace(/\/.*$/, '').toLowerCase();
+      const isAllowed = originHost && (originHost === normalizedAllowed || originHost.endsWith(`.${normalizedAllowed}`));
+      if (!isAllowed) {
+        return res.status(403).json({ error: `This API key is restricted to ${allowedDomain} and cannot be used from this origin.` });
+      }
+    }
+  }
+
   const result = await authorizeApiKeyDoc(keyDoc, keyHash);
   if (result.error) {
     if (result.error.retryAfterSeconds) res.set('Retry-After', String(result.error.retryAfterSeconds));
@@ -506,6 +598,31 @@ app.get('/v1/dashboard-test-geocode', requireAuth, async (req, res) => {
     res.status(502).json({ error: 'Could not reach the map provider. Please retry.' });
   }
 });
+
+// ================= NOT-YET-IMPLEMENTED MAP ENDPOINTS =================
+// The docs advertise these because they're part of the intended API
+// surface, but there is no upstream integration behind them yet — Nominatim
+// doesn't cover them, and no commercial provider adapter is wired in (see
+// the MAPS_PROVIDER_MODE abstraction above). Rather than fake results,
+// they fail loudly and explicitly with a 503 and a clear reason. They
+// don't run validateApiKey/consume quota, since they never do any real
+// work — no point charging a key's request budget for a guaranteed failure.
+function notYetAvailable(name) {
+  return (req, res) => {
+    res.status(503).json({
+      error: `${name} is not available yet. RapidSafe Maps has not configured a maps provider for this endpoint.`,
+      status: 'not_implemented'
+    });
+  };
+}
+app.get('/v1/reverse', notYetAvailable('Reverse geocoding'));
+app.get('/v1/autocomplete', notYetAvailable('Autocomplete'));
+app.get('/v1/places/search', notYetAvailable('Places search'));
+app.get('/v1/directions', notYetAvailable('Directions'));
+app.post('/v1/matrix', notYetAvailable('Matrix'));
+app.get('/v1/staticmap', notYetAvailable('Static maps'));
+app.get('/v1/elevation', notYetAvailable('Elevation'));
+app.get('/v1/timezone', notYetAvailable('Timezone'));
 
 // ================= GOOGLE-COMPATIBLE MIGRATION ENDPOINT =================
 app.get('/maps/api/geocode/json', validateApiKey, async (req, res) => {
@@ -654,7 +771,7 @@ app.post('/v1/escalate-support', requireAuth, async (req, res) => {
     
     await sendEmail(process.env.EMAIL_USER, `[PRIORITY] ${plan.toUpperCase()} Support Request`, alertHtml);
 
-    res.json({ success: true, message: "A dedicated human agent has been notified and will join the chat or email you within 5 minutes." });
+    res.json({ success: true, message: "Your priority support request was emailed to the RapidMaps support inbox. Response times are not guaranteed." });
   } catch (error) {
     res.status(500).json({ error: "Failed to connect to human agent." });
   }
@@ -798,9 +915,11 @@ app.post('/v1/verify-payment', requireAuth, async (req, res) => {
         paidAt: now.toISOString(),
         expiresAt: expiryDate.toISOString(),
         updatedAt: now.toISOString(),
-        // Recorded for display only — no recurring mandate/subscription is
-        // actually wired up yet. See README "AutoPay" note before launch.
-        autopayEnabled: !!req.body.autopayEnabled
+        // Always false: there is no real Razorpay recurring
+        // subscription/mandate implementation yet, so we never record (or
+        // trust) a client claim that AutoPay is on. See README "AutoPay"
+        // note — this must change only once actual recurring billing exists.
+        autopayEnabled: false
       }, { merge: true });
     });
 
@@ -829,7 +948,7 @@ app.post('/v1/activate-free-plan', requireAuth, async (req, res) => {
       plan: 'free',
       billingCycle: 'monthly',
       amountINR: 0,
-      paymentStatus: 'PAID',
+      paymentStatus: 'FREE',
       expiresAt: null,
       updatedAt: new Date().toISOString()
     }, { merge: true });
@@ -976,8 +1095,17 @@ cron.schedule('0 0 * * *', async () => {
 // =====================================================
 
 // ================= HEALTH CHECK =================
-// Used by the hosting platform / uptime monitors to know the process is alive.
-app.get('/health', (req, res) => res.status(200).json({ status: 'ok' }));
+// Used by the hosting platform / uptime monitors to know the process is
+// alive, and by the frontend to show honest configuration status. Only
+// booleans/timestamps — never secrets or credential values.
+app.get('/health', (req, res) => res.status(200).json({
+  status: 'ok',
+  service: 'RapidMaps API',
+  timestamp: new Date().toISOString(),
+  paymentsConfigured: !!(process.env.RAZORPAY_KEY_ID && process.env.RAZORPAY_KEY_SECRET),
+  aiConfigured: !!genAI,
+  compliantMapsProviderConfigured: isCompliantMapsProviderConfigured()
+}));
 
 // ============================================================
 // SERVE THE FRONTEND FILES
