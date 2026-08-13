@@ -1,6 +1,6 @@
 
 /* ==========================================================
-   RapidMaps — Global Design System
+   RapidSafe Maps — Global Design System
    Design tokens, typography, layout primitives, components
    ========================================================== */
 
@@ -454,7 +454,7 @@ p { color: var(--text-secondary); }
    ============================================================ */
 
 /* ==========================================================
-   RapidMaps — Landing Page Styles
+   RapidSafe Maps — Landing Page Styles
    ========================================================== */
 
 .accent-text { color: var(--accent); }
@@ -687,7 +687,7 @@ p { color: var(--text-secondary); }
    ============================================================ */
 
 /* ==========================================================
-   RapidMaps — Auth Pages (login / signup / forgot password)
+   RapidSafe Maps — Auth Pages (login / signup / forgot password)
    ========================================================== */
 .page-auth {
   min-height: 90vh;
@@ -863,7 +863,7 @@ p { color: var(--text-secondary); }
    ============================================================ */
 
 /* ==========================================================
-   RapidMaps — App Shell (Dashboard / Profile / Settings / Admin)
+   RapidSafe Maps — App Shell (Dashboard / Profile / Settings / Admin)
    ========================================================== */
 
 body.app-body {
@@ -1098,7 +1098,7 @@ body.app-body {
    ============================================================ */
 
 /* ==========================================================
-   RapidMaps — Profile Page
+   RapidSafe Maps — Profile Page
    ========================================================== */
 
 .profile-grid {
@@ -1152,7 +1152,7 @@ body.app-body {
    ============================================================ */
 
 /* ==========================================================
-   RapidMaps — Settings Page
+   RapidSafe Maps — Settings Page
    ========================================================== */
 
 .pref-row {
@@ -1219,7 +1219,7 @@ body.app-body {
    ============================================================ */
 
 /* ==========================================================
-   RapidMaps — Pricing Page
+   RapidSafe Maps — Pricing Page
    ========================================================== */
 
 .pricing-hero { padding: 168px 0 40px; text-align: center; }
@@ -1285,7 +1285,7 @@ body.app-body {
    ============================================================ */
 
 /* ==========================================================
-   RapidMaps — Documentation Page
+   RapidSafe Maps — Documentation Page
    ========================================================== */
 
 .docs-body { display: flex; min-height: 100vh; padding-top: 76px; }
@@ -1382,7 +1382,7 @@ body.app-body {
    ============================================================ */
 
 /* ==========================================================
-   RapidMaps — Admin Panel
+   RapidSafe Maps — Admin Panel
    ========================================================== */
 
 .admin-login-screen {
