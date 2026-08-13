@@ -226,18 +226,18 @@ const PAGE_FILE_MAP = {
 };
 
 const PAGE_TITLES = {
-  landing: 'RapidMaps — Developer-first Maps Platform',
-  login: 'Log in — RapidMaps',
-  signup: 'Sign up — RapidMaps',
-  forgot: 'Reset password — RapidMaps',
-  dashboard: 'Dashboard — RapidMaps',
-  profile: 'Profile — RapidMaps',
-  settings: 'Settings — RapidMaps',
-  pricing: 'Pricing — RapidMaps',
-  docs: 'Documentation — RapidMaps',
-  admin: 'Admin — RapidMaps',
-  terms: 'Terms and Conditions — RapidMaps',
-  privacy: 'Privacy Policy — RapidMaps'
+  landing: 'RapidSafe Maps — Developer-first Maps Platform',
+  login: 'Log in — RapidSafe Maps',
+  signup: 'Sign up — RapidSafe Maps',
+  forgot: 'Reset password — RapidSafe Maps',
+  dashboard: 'Dashboard — RapidSafe Maps',
+  profile: 'Profile — RapidSafe Maps',
+  settings: 'Settings — RapidSafe Maps',
+  pricing: 'Pricing — RapidSafe Maps',
+  docs: 'Documentation — RapidSafe Maps',
+  admin: 'Admin — RapidSafe Maps',
+  terms: 'Terms and Conditions — RapidSafe Maps',
+  privacy: 'Privacy Policy — RapidSafe Maps'
 };
 
 function navigateTo(page) {
@@ -245,7 +245,7 @@ function navigateTo(page) {
   document.querySelectorAll('.page').forEach((p) => p.classList.remove('page-active'));
   document.getElementById(`page-${page}`)?.classList.add('page-active');
   currentPageKey = page;
-  document.title = PAGE_TITLES[page] || 'RapidMaps';
+  document.title = PAGE_TITLES[page] || 'RapidSafe Maps';
   window.scrollTo({ top: 0, behavior: 'auto' });
   if (location.hash !== `#${page}`) history.pushState(null, '', `#${page}`);
 
@@ -346,7 +346,7 @@ function bindPlanSelection() {
       order_id: activeOrder.orderId,
       amount: activeOrder.amount, // paise, from the server-created order
       currency: activeOrder.currency,
-      name: 'RapidMaps Platform',
+      name: 'RapidSafe Maps Platform',
       description: `${PLAN_PRICES_INR[activeTargetPlan].label} Plan (${activeTargetCycle.toUpperCase()}) ${isAutoPay ? '- AutoPay Enabled' : ''}`,
       image: 'https://cdn-icons-png.flaticon.com/512/854/854878.png',
       modal: {
@@ -551,7 +551,7 @@ function bindRouterLinks() {
   // NEW: Wire the Status Link inside the footer
   document.getElementById('link-status')?.addEventListener('click', (e) => {
     e.preventDefault();
-    Toast.success('RapidMaps API is available for early-access testing.');
+    Toast.success('RapidSafe Maps API is available for early-access testing.');
   });
   
   // Bind the Floating Back Button Click Event
@@ -625,9 +625,19 @@ async function updateSharedUserUI(user) {
    ============================================================ */
 
 const Theme = {
-  KEY: 'rapidmaps-theme',
+  KEY: 'rapidsafemaps-theme',
+  OLD_KEY: 'rapidmaps-theme', // migration: old key name, pre-rebrand
   init() {
-    const saved = localStorage.getItem(this.KEY);
+    let saved = localStorage.getItem(this.KEY);
+    if (!saved) {
+      // One-time migration for existing users saved under the old key.
+      const old = localStorage.getItem(this.OLD_KEY);
+      if (old) {
+        localStorage.setItem(this.KEY, old);
+        localStorage.removeItem(this.OLD_KEY);
+        saved = old;
+      }
+    }
     const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
     const theme = saved || (prefersDark ? 'dark' : 'light');
     document.documentElement.setAttribute('data-theme', theme);
@@ -939,7 +949,7 @@ function initSignupPage() {
     setLoading(btn, true);
     try {
       await registerWithEmail(form.name.value.trim(), form.email.value.trim(), password);
-      Toast.success('Account created — welcome to RapidMaps!');
+      Toast.success('Account created — welcome to RapidSafe Maps!');
       navigateTo('dashboard');
     } catch (err) {
       showError(banner, friendlyAuthError(err));
@@ -1430,11 +1440,22 @@ async function enterProfile() {
    (from js/settings.js)
    ============================================================ */
 
-const PREF_KEY = 'rapidmaps-preferences';
+const PREF_KEY = 'rapidsafemaps-preferences';
+const OLD_PREF_KEY = 'rapidmaps-preferences'; // migration: old key name, pre-rebrand
 
 function loadPreferences() {
   try {
-    return JSON.parse(localStorage.getItem(PREF_KEY)) || {
+    let raw = localStorage.getItem(PREF_KEY);
+    if (!raw) {
+      // One-time migration for existing users saved under the old key.
+      const old = localStorage.getItem(OLD_PREF_KEY);
+      if (old) {
+        localStorage.setItem(PREF_KEY, old);
+        localStorage.removeItem(OLD_PREF_KEY);
+        raw = old;
+      }
+    }
+    return JSON.parse(raw) || {
       emailNotifications: true, usageAlerts: true, productUpdates: false,
       strictDomainCheck: true, rateLimitAlerts: true,
     };
@@ -1458,18 +1479,18 @@ function bindToggles() {
 
 function bindThemeOptions() {
   const options = document.querySelectorAll('.theme-option');
-  const current = localStorage.getItem('rapidmaps-theme') || 'light';
+  const current = localStorage.getItem('rapidsafemaps-theme') || 'light';
   options.forEach((opt) => opt.classList.toggle('selected', opt.dataset.theme === current));
   options.forEach((opt) => {
     opt.addEventListener('click', () => {
       const theme = opt.dataset.theme;
       if (theme === 'system') {
-        localStorage.removeItem('rapidmaps-theme');
+        localStorage.removeItem('rapidsafemaps-theme');
         const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
         document.documentElement.setAttribute('data-theme', prefersDark ? 'dark' : 'light');
       } else {
         document.documentElement.setAttribute('data-theme', theme);
-        localStorage.setItem('rapidmaps-theme', theme);
+        localStorage.setItem('rapidsafemaps-theme', theme);
       }
       options.forEach((o) => o.classList.toggle('selected', o === opt));
     });
