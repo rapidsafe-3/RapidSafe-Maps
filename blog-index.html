@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RapidSafe Maps — The Affordable Google Maps Alternative</title>
+<meta name="description" content="RapidSafe Maps is developer-first mapping infrastructure with flat, predictable pricing — a drop-in replacement powered by OpenStreetMap.">
+<meta name="keywords" content="RapidSafe Maps, Google Maps alternative, geocoding API, affordable maps API, OpenStreetMap API, developer mapping infrastructure">
+<meta name="author" content="Mohammed Saqib Ahmed">
+<link rel="canonical" href="https://www.rapidsafe.in/">
+<meta name="theme-color" content="#FF6B00">
+<meta name="robots" content="index, follow">
+
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="RapidSafe Maps">
+<meta property="og:title" content="RapidSafe Maps — The Affordable Google Maps Alternative">
+<meta property="og:description" content="Location intelligence shouldn't break the bank. Flat-rate, drop-in mapping infrastructure for developers.">
+<meta property="og:url" content="https://www.rapidsafe.in/">
+<meta property="og:image" content="https://i.ibb.co/CsYs31h3/IMG-20250920-001644-778.webp">
+
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="RapidSafe Maps — The Affordable Google Maps Alternative">
+<meta name="twitter:description" content="Location intelligence shouldn't break the bank. Flat-rate, drop-in mapping infrastructure for developers.">
+<meta name="twitter:image" content="https://i.ibb.co/CsYs31h3/IMG-20250920-001644-778.webp">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+<link rel="stylesheet" href="article.css">
+</head>
+<body>
+
+<a class="skip-link" href="#main-content">Skip to content</a>
+
+<!-- Ambient background -->
+<div class="bg-layer" aria-hidden="true">
+  <div class="bg-grid"></div>
+  <div class="bg-glow bg-glow--top"></div>
+  <div class="bg-glow bg-glow--mid"></div>
+  <div class="bg-dots"></div>
+</div>
+
+<!-- Navbar -->
+<header class="navbar" id="top">
+  <nav class="navbar-inner" aria-label="Primary">
+    <a href="index.html" class="brand">
+      <span class="brand-mark" aria-hidden="true">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M12 2L3 7.5V16.5L12 22L21 16.5V7.5L12 2Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+          <path d="M12 2V12M12 12L21 7.5M12 12L3 7.5M12 12V22" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+        </svg>
+      </span>
+      <span class="brand-name">RapidSafe<span class="brand-accent">Maps</span></span>
+    </a>
+
+    <button type="button" class="nav-toggle" id="navToggleBtn" aria-label="Toggle menu" aria-expanded="false" aria-controls="mobile-menu">
+      <span class="nav-toggle-bars" aria-hidden="true">
+        <span class="nav-toggle-bar"></span>
+        <span class="nav-toggle-bar"></span>
+        <span class="nav-toggle-bar"></span>
+      </span>
+    </button>
+
+    <div class="navbar-links" id="mobile-menu">
+      <a href="index.html" class="nav-link is-active" aria-current="page">Home</a>
+      <a href="maps-api.html" class="nav-link">Maps API</a>
+      <a href="docs.html" class="nav-link">Documentation</a>
+      <a href="blogs.html" class="nav-link">Blogs</a>
+      <a href="about.html" class="nav-link">About</a>
+      <a href="https://www.rapidsafe.in" class="btn btn--primary btn--sm" target="_blank" rel="noopener">Visit RapidSafe</a>
+    </div>
+  </nav>
+</header>
+
+<main id="main-content">
+
+  <!-- Hero -->
+  <section class="hero">
+    <div class="hero-inner">
+      <div class="hero-card" data-tilt>
+        <div class="hero-card-glow" aria-hidden="true"></div>
+
+        <span class="badge">
+          <span class="badge-dot" aria-hidden="true"></span>
+          Developer Platform
+        </span>
+
+        <h1 class="hero-title">Location Intelligence, <span class="hero-title-accent">Without the Billing Shock</span></h1>
+
+        <p class="hero-subtitle">RapidSafe Maps is flat-rate, developer-first mapping infrastructure — a drop-in replacement for expensive mapping APIs, powered by OpenStreetMap.</p>
+
+        <div class="hero-facts hero-facts--standalone">
+          <span class="hero-fact"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 22s7-7.58 7-12.5A7 7 0 105 9.5C5 14.42 12 22 12 22z" stroke="currentColor" stroke-width="1.6"/><circle cx="12" cy="9.5" r="2.2" stroke="currentColor" stroke-width="1.6"/></svg>190+ countries covered</span>
+          <span class="hero-fact-dot" aria-hidden="true">&middot;</span>
+          <span class="hero-fact"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.6"/><path d="M12 7v5l3 2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>~40ms median latency</span>
+        </div>
+
+        <div class="hero-share" role="group" style="margin-top:26px;">
+          <a href="https://www.rapidsafe.in" class="btn btn--primary btn--md" target="_blank" rel="noopener">Get Free API Key</a>
+          <a href="docs.html" class="btn btn--ghost btn--md" style="color:var(--text); border-color:var(--border);">Read the Docs</a>
+        </div>
+
+        <!-- floating decorative chips -->
+        <div class="float-chip float-chip--api" aria-hidden="true">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M8 3H5a2 2 0 00-2 2v3M16 3h3a2 2 0 012 2v3M8 21H5a2 2 0 01-2-2v-3M16 21h3a2 2 0 002-2v-3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+          <span>200 OK</span>
+        </div>
+        <div class="float-chip float-chip--pin" aria-hidden="true">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M12 22s7-7.58 7-12.5A7 7 0 105 9.5C5 14.42 12 22 12 22z" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="9.5" r="2.2" stroke="currentColor" stroke-width="1.8"/></svg>
+          <span>28.6139, 77.2090</span>
+        </div>
+        <div class="float-chip float-chip--code" aria-hidden="true">
+          <span>&lt;/&gt; 40ms</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="page-container">
+    <article class="content">
+
+      <section class="section" id="why-us">
+        <h2>Why Developers Choose RapidSafe Maps</h2>
+        <p>Everything you need to ship location features, without the unpredictable per-request billing that comes with legacy mapping providers.</p>
+
+        <div class="feature-grid">
+          <div class="feature-card">
+            <div class="feature-icon" aria-hidden="true">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><rect x="3" y="6" width="18" height="13" rx="2" stroke="currentColor" stroke-width="1.6"/><path d="M3 10h18" stroke="currentColor" stroke-width="1.6"/></svg>
+            </div>
+            <h3>Flat-Rate Pricing</h3>
+            <p>One predictable monthly price. No surprise invoices when your app starts to gain traction.</p>
+          </div>
+
+          <div class="feature-card">
+            <div class="feature-icon" aria-hidden="true">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><rect x="9" y="9" width="12" height="12" rx="2" stroke="currentColor" stroke-width="1.6"/><path d="M5 15V5a2 2 0 012-2h10" stroke="currentColor" stroke-width="1.6"/></svg>
+            </div>
+            <h3>Drop-In Replacement</h3>
+            <p>Mimics standard JSON response structures — swap the base URL and key, keep your existing code.</p>
+          </div>
+
+          <div class="feature-card">
+            <div class="feature-icon" aria-hidden="true">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 22s7-7.58 7-12.5A7 7 0 105 9.5C5 14.42 12 22 12 22z" stroke="currentColor" stroke-width="1.6"/><circle cx="12" cy="9.5" r="2.2" stroke="currentColor" stroke-width="1.6"/></svg>
+            </div>
+            <h3>OpenStreetMap Coverage</h3>
+            <p>Accurate, crowdsourced geospatial data for 190+ countries — no heavy licensing fees.</p>
+          </div>
+
+          <div class="feature-card">
+            <div class="feature-icon" aria-hidden="true">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M4 19V10M12 19V5M20 19v-6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+            </div>
+            <h3>Real-Time Dashboard</h3>
+            <p>Track usage, generate API keys, and test requests live from a single-page dashboard.</p>
+          </div>
+
+          <div class="feature-card">
+            <div class="feature-icon" aria-hidden="true">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><rect x="3" y="4" width="18" height="6" rx="1.5" stroke="currentColor" stroke-width="1.6"/><rect x="3" y="14" width="18" height="6" rx="1.5" stroke="currentColor" stroke-width="1.6"/><circle cx="7" cy="7" r="1" fill="currentColor"/><circle cx="7" cy="17" r="1" fill="currentColor"/></svg>
+            </div>
+            <h3>Built for Speed</h3>
+            <p>A custom API gateway tuned for rapid request handling, with median latencies under 40ms.</p>
+          </div>
+
+          <div class="feature-card">
+            <div class="feature-icon" aria-hidden="true">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.6"/><path d="M12 7v5l3 2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+            </div>
+            <h3>No Credit Card Required</h3>
+            <p>Get 2,500 requests per month free, and start testing in the Live API Playground instantly.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Product card -->
+      <section class="product" aria-labelledby="product-heading">
+        <div class="product-inner">
+          <span class="badge badge--dark">
+            <span class="badge-dot" aria-hidden="true"></span>
+            The Product
+          </span>
+          <h2 id="product-heading" class="product-heading">One Platform, Every Location Feature You Need</h2>
+          <p class="product-desc">Developer-first mapping infrastructure for applications that need reliable location intelligence without unnecessary complexity.</p>
+
+          <ul class="chip-grid">
+            <li class="chip">Geocoding</li>
+            <li class="chip">Maps</li>
+            <li class="chip">API Infrastructure</li>
+            <li class="chip">Developer Dashboard</li>
+            <li class="chip">Usage Monitoring</li>
+            <li class="chip">API Keys</li>
+          </ul>
+
+          <a href="maps-api.html" class="btn btn--primary btn--md">Explore the Maps API</a>
+        </div>
+      </section>
+
+    </article>
+  </div>
+
+  <!-- Final CTA -->
+  <section class="final-cta">
+    <div class="final-cta-card">
+      <div class="final-cta-glow" aria-hidden="true"></div>
+      <h2>Build with RapidSafe Maps.</h2>
+      <p>Simple APIs. Developer-first infrastructure. Built for modern applications.</p>
+      <div class="final-cta-actions">
+        <a href="https://www.rapidsafe.in" class="btn btn--primary btn--lg" target="_blank" rel="noopener">Explore RapidSafe Maps</a>
+        <a href="article.html" class="btn btn--ghost btn--lg">Read the Story</a>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<!-- Footer -->
+<footer class="footer">
+  <div class="footer-inner">
+    <div class="footer-brand">
+      <span class="brand-name">RapidSafe<span class="brand-accent">Maps</span></span>
+      <p>Developer-first mapping infrastructure.</p>
+    </div>
+
+    <nav class="footer-links" aria-label="Footer">
+      <a href="index.html">Home</a>
+      <a href="maps-api.html">Maps API</a>
+      <a href="docs.html">Documentation</a>
+      <a href="blogs.html">Blogs</a>
+      <a href="about.html">About</a>
+    </nav>
+
+    <a href="https://www.rapidsafe.in" class="footer-domain" target="_blank" rel="noopener">www.rapidsafe.in</a>
+  </div>
+  <div class="footer-bottom">
+    <p>&copy; 2026 RapidSafe Maps. All rights reserved. Built by Mohammed Saqib Ahmed.</p>
+  </div>
+</footer>
+
+<script>
+(function () {
+  "use strict";
+  var btn = document.getElementById("navToggleBtn");
+  var menu = document.getElementById("mobile-menu");
+  if (!btn || !menu) return;
+
+  function isOpen() { return menu.classList.contains("is-open"); }
+
+  function openMenu() {
+    menu.classList.add("is-open");
+    btn.classList.add("is-active");
+    btn.setAttribute("aria-expanded", "true");
+  }
+
+  function closeMenu() {
+    menu.classList.remove("is-open");
+    btn.classList.remove("is-active");
+    btn.setAttribute("aria-expanded", "false");
+  }
+
+  btn.addEventListener("click", function (e) {
+    e.stopPropagation();
+    isOpen() ? closeMenu() : openMenu();
+  });
+
+  menu.addEventListener("click", function (e) {
+    if (e.target.closest("a")) closeMenu();
+  });
+
+  document.addEventListener("click", function (e) {
+    if (isOpen() && !menu.contains(e.target) && e.target !== btn && !btn.contains(e.target)) {
+      closeMenu();
+    }
+  });
+
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape" && isOpen()) closeMenu();
+  });
+
+  window.addEventListener("resize", function () {
+    if (window.innerWidth > 720 && isOpen()) closeMenu();
+  });
+
+
+  /* ---------------------------------------------------------------
+     RapidSafe shared interactions: clipboard + 3D tilt + placeholders
+     --------------------------------------------------------------- */
+  function getCodeText(button) {
+    var windowEl = button.closest('.code-window');
+    if (!windowEl) return '';
+    var code = windowEl.querySelector('.code-body code');
+    return code ? code.innerText : '';
+  }
+
+  function setCopyState(button, copied) {
+    if (!button) return;
+    button.classList.toggle('is-copied', copied);
+    var label = button.querySelector('.copy-label');
+    if (label) label.textContent = copied ? 'Copied' : 'Copy';
+    else button.setAttribute('data-copy-label', copied ? 'Copied' : 'Copy');
+    button.setAttribute('aria-label', copied ? 'Code copied' : 'Copy code');
+  }
+
+  document.querySelectorAll('.copy-btn').forEach(function (button) {
+    if (!button.querySelector('.copy-label')) {
+      var text = Array.from(button.childNodes).find(function (node) {
+        return node.nodeType === 3 && node.textContent.trim();
+      });
+      if (text) {
+        var span = document.createElement('span');
+        span.className = 'copy-label';
+        span.textContent = text.textContent.trim();
+        text.replaceWith(span);
+      }
+    }
+
+    button.addEventListener('click', async function () {
+      var text = getCodeText(button);
+      if (!text) return;
+      try {
+        await navigator.clipboard.writeText(text);
+      } catch (err) {
+        var area = document.createElement('textarea');
+        area.value = text;
+        area.setAttribute('readonly', '');
+        area.style.position = 'fixed';
+        area.style.opacity = '0';
+        document.body.appendChild(area);
+        area.select();
+        document.execCommand('copy');
+        area.remove();
+      }
+      setCopyState(button, true);
+      window.setTimeout(function () { setCopyState(button, false); }, 1600);
+    });
+  });
+
+  /* Subtle desktop 3D card movement. Disabled for touch/reduced-motion. */
+  if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches &&
+      window.matchMedia('(pointer: fine)').matches) {
+    document.querySelectorAll('[data-tilt]').forEach(function (card) {
+      var max = 5;
+      card.addEventListener('pointermove', function (event) {
+        var rect = card.getBoundingClientRect();
+        var x = (event.clientX - rect.left) / rect.width;
+        var y = (event.clientY - rect.top) / rect.height;
+        var rotateY = (x - 0.5) * max * 2;
+        var rotateX = (0.5 - y) * max * 2;
+        card.style.setProperty('--tilt-x', rotateX.toFixed(2) + 'deg');
+        card.style.setProperty('--tilt-y', rotateY.toFixed(2) + 'deg');
+        card.classList.add('is-tilting');
+      });
+      card.addEventListener('pointerleave', function () {
+        card.style.removeProperty('--tilt-x');
+        card.style.removeProperty('--tilt-y');
+        card.classList.remove('is-tilting');
+      });
+    });
+  }
+
+  /* Keep placeholder social links harmless until real profiles are supplied. */
+  document.querySelectorAll('a[href*="example.com"], a[href="mailto:hello@example.com"]').forEach(function (link) {
+    link.addEventListener('click', function (event) {
+      event.preventDefault();
+    });
+    link.setAttribute('aria-disabled', 'true');
+    link.setAttribute('tabindex', '-1');
+    link.classList.add('is-placeholder');
+  });
+
+})();
+</script>
+</body>
+</html>
