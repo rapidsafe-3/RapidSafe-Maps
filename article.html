@@ -1,108 +1,579 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=1280, maximum-scale=1.0, user-scalable=no">
-  <title>How I Built RapidSafe Maps: The Developer-First Google Maps Alternative</title>
-  
-  <link rel="stylesheet" href="article.css">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>How I Built RapidSafe Maps: The Affordable Google Maps Alternative</title>
+<meta name="description" content="A student developer's first-hand account of building RapidSafe Maps — a flat-rate, drop-in replacement for expensive mapping APIs, powered by OpenStreetMap.">
+<meta name="keywords" content="RapidSafe Maps, Google Maps alternative, geocoding API, affordable maps API, OpenStreetMap API, developer mapping infrastructure">
+<meta name="author" content="Mohammed Saqib Ahmed">
+<link rel="canonical" href="https://www.rapidsafe.in/article.html">
+<meta name="theme-color" content="#FF6B00">
+<meta name="robots" content="index, follow">
+
+<!-- Open Graph -->
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="RapidSafe Maps">
+<meta property="og:title" content="How I Built RapidSafe Maps: The Affordable Google Maps Alternative">
+<meta property="og:description" content="Location intelligence shouldn't break the bank. Why a student developer built an affordable, developer-first mapping platform.">
+<meta property="og:url" content="https://www.rapidsafe.in/article.html">
+<meta property="og:image" content="https://i.ibb.co/CsYs31h3/IMG-20250920-001644-778.webp">
+<meta property="article:author" content="Mohammed Saqib Ahmed">
+<meta property="article:published_time" content="2026-08-01">
+
+<!-- Twitter -->
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="How I Built RapidSafe Maps: The Affordable Google Maps Alternative">
+<meta name="twitter:description" content="Location intelligence shouldn't break the bank. Why a student developer built an affordable, developer-first mapping platform.">
+<meta name="twitter:image" content="https://i.ibb.co/CsYs31h3/IMG-20250920-001644-778.webp">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+<link rel="stylesheet" href="article.css">
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "How I Built RapidSafe Maps: The Affordable Google Maps Alternative",
+  "description": "Location intelligence shouldn't break the bank. Here is why a student developer built an affordable, developer-first mapping platform.",
+  "image": "https://i.ibb.co/CsYs31h3/IMG-20250920-001644-778.webp",
+  "author": {
+    "@type": "Person",
+    "name": "Mohammed Saqib Ahmed"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "RapidSafe Maps",
+    "url": "https://www.rapidsafe.in"
+  },
+  "datePublished": "2026-08-01",
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "https://www.rapidsafe.in/article.html"
+  }
+}
+</script>
 </head>
 <body>
 
-  <!-- Top Navbar -->
-  <nav class="navbar">
-    <a href="https://rapidsafemaps.web.app" class="brand">
-      <img src="https://i.ibb.co/N68bfnpB/1000081132-removebg-preview.png" alt="RapidSafe Maps Logo" class="brand-logo">
-      RapidSafe Maps Blog
+<a class="skip-link" href="#main-content">Skip to content</a>
+
+<!-- Ambient background -->
+<div class="bg-layer" aria-hidden="true">
+  <div class="bg-grid"></div>
+  <div class="bg-glow bg-glow--top"></div>
+  <div class="bg-glow bg-glow--mid"></div>
+  <div class="bg-dots"></div>
+</div>
+
+<!-- Navbar -->
+<header class="navbar" id="top">
+  <nav class="navbar-inner" aria-label="Primary">
+    <a href="index.html" class="brand">
+      <span class="brand-mark" aria-hidden="true">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M12 2L3 7.5V16.5L12 22L21 16.5V7.5L12 2Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+          <path d="M12 2V12M12 12L21 7.5M12 12L3 7.5M12 12V22" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+        </svg>
+      </span>
+      <span class="brand-name">RapidSafe<span class="brand-accent">Maps</span></span>
     </a>
-    <a href="https://rapidsafemaps.web.app" class="btn-primary" target="_blank">Get API Key</a>
+
+    <button type="button" class="nav-toggle" id="navToggleBtn" aria-label="Toggle menu" aria-expanded="false" aria-controls="mobile-menu">
+      <span class="nav-toggle-bars" aria-hidden="true">
+        <span class="nav-toggle-bar"></span>
+        <span class="nav-toggle-bar"></span>
+        <span class="nav-toggle-bar"></span>
+      </span>
+    </button>
+
+    <div class="navbar-links" id="mobile-menu">
+      <a href="index.html" class="nav-link">Home</a>
+      <a href="maps-api.html" class="nav-link">Maps API</a>
+      <a href="docs.html" class="nav-link">Documentation</a>
+      <a href="blogs.html" class="nav-link is-active" aria-current="page">Blogs</a>
+      <a href="about.html" class="nav-link">About</a>
+      <a href="https://www.rapidsafe.in" class="btn btn--primary btn--sm" target="_blank" rel="noopener">Visit RapidSafe</a>
+    </div>
   </nav>
+</header>
 
-  <!-- Main Article -->
-  <main class="article-container">
-    <header class="article-header">
-      <span class="tag">Creator Story</span>
-      <h1>How I Built RapidSafe Maps: The Affordable Google Maps Alternative</h1>
-      <p class="subtitle">Location intelligence shouldn't break the bank. Here is why a 2nd PUC student built an affordable, drop-in replacement for the world's biggest mapping API.</p>
-      
-      <!-- Author Bio -->
-      <div class="author-box">
-        <img src="https://i.ibb.co/CsYs31h3/IMG-20250920-001644-778.webp" alt="Mohammed Saqib Ahmed" class="author-img">
-        <div class="author-details">
-          <div class="author-name">Mohammed Saqib Ahmed</div>
-          <div class="author-meta">Student Developer & Creator • 5 min read</div>
+<main id="main-content">
+
+  <!-- Hero -->
+  <section class="hero">
+    <div class="hero-inner">
+      <div class="hero-card" data-tilt>
+        <div class="hero-card-glow" aria-hidden="true"></div>
+
+        <span class="badge">
+          <span class="badge-dot" aria-hidden="true"></span>
+          Creator Story
+        </span>
+
+        <h1 class="hero-title">How I Built RapidSafe Maps: <span class="hero-title-accent">The Affordable Google Maps Alternative</span></h1>
+
+        <p class="hero-subtitle">Location intelligence shouldn't break the bank. Here is why a student developer built an affordable, developer-first mapping platform.</p>
+
+        <div class="hero-meta">
+          <div class="hero-author">
+            <img src="https://i.ibb.co/CsYs31h3/IMG-20250920-001644-778.webp" alt="Portrait of Mohammed Saqib Ahmed" class="hero-author-img" loading="lazy" width="48" height="48">
+            <div class="hero-author-text">
+              <span class="hero-author-name">Mohammed Saqib Ahmed</span>
+              <span class="hero-author-role">Student Developer &amp; Creator</span>
+            </div>
+          </div>
+
+          <div class="hero-facts">
+            <span class="hero-fact"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.6"/><path d="M12 7v5l3 2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>5 min read</span>
+            <span class="hero-fact-dot" aria-hidden="true">&middot;</span>
+            <span class="hero-fact">August 2026</span>
+          </div>
+        </div>
+
+        <div class="hero-share" role="group" aria-label="Share this article">
+          <span class="share-label">Share</span>
+          <a class="share-btn" href="https://twitter.com/intent/tweet?text=How%20I%20Built%20RapidSafe%20Maps&url=https%3A%2F%2Fwww.rapidsafe.in%2F" target="_blank" rel="noopener" aria-label="Share on X">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M18.9 2H22l-7.6 8.7L23 22h-6.9l-5.4-6.6L4.5 22H1.3l8.1-9.3L1 2h7l4.9 6z"/></svg>
+          </a>
+          <a class="share-btn" href="https://www.linkedin.com/sharing/share-offsite/?url=https%3A%2F%2Fwww.rapidsafe.in%2F" target="_blank" rel="noopener" aria-label="Share on LinkedIn">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M6.94 5a2 2 0 11-4-.02 2 2 0 014 .02zM7 8.48H3V21h4V8.48zm6.32 0H9.34V21h3.94v-6.57c0-3.66 4.77-3.96 4.77 0V21H22v-7.93c0-6.17-7.06-5.95-8.68-2.91V8.48z"/></svg>
+          </a>
+          <a class="share-btn" href="mailto:?subject=How%20I%20Built%20RapidSafe%20Maps&body=https%3A%2F%2Fwww.rapidsafe.in%2F" aria-label="Share via email">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M3 6h18v12H3V6z" stroke="currentColor" stroke-width="1.6"/><path d="M3 7l9 6 9-6" stroke="currentColor" stroke-width="1.6"/></svg>
+          </a>
+        </div>
+
+        <!-- floating decorative chips -->
+        <div class="float-chip float-chip--api" aria-hidden="true">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M8 3H5a2 2 0 00-2 2v3M16 3h3a2 2 0 012 2v3M8 21H5a2 2 0 01-2-2v-3M16 21h3a2 2 0 002-2v-3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+          <span>200 OK</span>
+        </div>
+        <div class="float-chip float-chip--pin" aria-hidden="true">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M12 22s7-7.58 7-12.5A7 7 0 105 9.5C5 14.42 12 22 12 22z" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="9.5" r="2.2" stroke="currentColor" stroke-width="1.8"/></svg>
+          <span>28.6139, 77.2090</span>
+        </div>
+        <div class="float-chip float-chip--code" aria-hidden="true">
+          <span>&lt;/&gt; 40ms</span>
         </div>
       </div>
-    </header>
+    </div>
+  </section>
 
+  <!-- Layout: TOC / Content / Info card -->
+  <div class="layout">
+
+    <!-- TOC -->
+    <aside class="toc" aria-label="Table of contents">
+      <div class="toc-sticky">
+        <span class="toc-label">On This Page</span>
+        <ol class="toc-list">
+          <li><a href="#spark"><span class="toc-num">01</span>The Spark</a></li>
+          <li><a href="#built-it"><span class="toc-num">02</span>How I Built It</a></li>
+          <li><a href="#drop-in"><span class="toc-num">03</span>Drop&#8209;In Migration</a></li>
+          <li><a href="#use-it"><span class="toc-num">04</span>How to Use It</a></li>
+          <li><a href="#future"><span class="toc-num">05</span>The Future</a></li>
+        </ol>
+      </div>
+    </aside>
+
+    <!-- Article -->
     <article class="content">
-      <h2>The Spark: The "Billing Shock" Problem</h2>
-      <p>If you have ever built an application that relies heavily on location data—whether it's a food delivery app, a ride-sharing service, or a real estate website—you know how it starts. You integrate a major mapping provider because it is the industry standard. It's easy, and the documentation is great.</p>
-      
-      <p>But everything changes when your app starts to gain traction. Suddenly, that initial free tier vanishes. You look at your developer dashboard and realize you owe hundreds of dollars just for basic Geocoding and Map requests.</p>
 
-      <blockquote>
-        "Unpredictable per-request pricing is a massive roadblock. You shouldn't need a massive budget just to render a map on a screen."
-      </blockquote>
+      <section id="spark" class="section">
+        <h2><span class="section-num">01</span>The Spark: The &ldquo;Billing Shock&rdquo; Problem</h2>
 
-      <p>I realized there was a massive gap in the market. Developers needed a platform that was fast and reliable, but with a flat, predictable pricing model. Even as a student developer, I knew this was a problem I could solve. That was the exact moment <strong>RapidSafe Maps</strong> was born.</p>
+        <p>If you have ever built an application that relies heavily on location data&mdash;whether it&rsquo;s a food delivery app, a ride-sharing service, or a real estate website&mdash;you know how it starts. You integrate a major mapping provider because it is the industry standard. It&rsquo;s easy, and the documentation is great.</p>
 
-      <h2>How I Built It</h2>
-      <p>Building a mapping engine requires a robust technology stack capable of handling high-volume requests with median latencies under 40 milliseconds.</p>
-      
-      <ul>
-        <li><strong>The API Gateway:</strong> I built a custom API gateway in Node.js, hosted on Render, ensuring rapid request handling and processing.</li>
-        <li><strong>Geospatial Data:</strong> To avoid massive data licensing fees, I tapped into OpenStreetMap (OSM). It provides incredibly accurate, crowdsourced data for 190+ countries.</li>
-        <li><strong>The Dashboard:</strong> I built a Single Page Application (SPA) dashboard where developers can track their usage in real-time and generate API keys.</li>
-        <li><strong>Payments:</strong> To make it accessible for the Indian and global markets, I integrated the Razorpay SDK to handle secure API subscriptions.</li>
-      </ul>
+        <p>But everything changes when your app starts to gain traction. Suddenly, that initial free tier vanishes. You look at your developer dashboard and realize you owe hundreds of dollars just for basic geocoding and map requests.</p>
 
-      <h2>The Unfair Advantage: The "Drop-In" Migration</h2>
-      <p>I knew that the biggest barrier to switching APIs is the headache of rewriting legacy code. Developers don't want to spend three days refactoring their entire app.</p>
-      <p>So, I engineered a feature I call the <strong>"Drop-In Replacement."</strong></p>
-      <p>I created an endpoint that mimics standard JSON response structures. If you want to switch to RapidSafe Maps, you barely need to touch your code. You simply swap out the base URL and append your new API key.</p>
+        <blockquote class="callout">
+          <svg class="callout-quote" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M9.5 6C6.5 7.2 5 9.8 5 13v5h6v-6H8c0-2 1-3.4 3-4.2L9.5 6zm9 0c-3 1.2-4.5 3.8-4.5 7v5h6v-6h-2.5c0-2 1-3.4 3-4.2L18.5 6z"/></svg>
+          <p>Unpredictable per-request pricing is a massive roadblock. You shouldn&rsquo;t need a massive budget just to render a map on a screen.</p>
+        </blockquote>
 
-      <div class="code-wrapper">
-        <div class="code-header">
-          <div class="dot r"></div><div class="dot y"></div><div class="dot g"></div>
-          <span class="code-filename">geocode.js</span>
+        <p>I realized there was a massive gap in the market. Developers needed a platform that was fast and reliable, but with a flat, predictable pricing model. Even as a student developer, I knew this was a problem I could solve. That was the exact moment <strong>RapidSafe Maps</strong> was born.</p>
+      </section>
+
+      <section id="built-it" class="section">
+        <h2><span class="section-num">02</span>How I Built It</h2>
+        <p>Building a mapping engine requires a robust technology stack capable of handling high-volume requests with median latencies under 40 milliseconds.</p>
+
+        <div class="feature-grid">
+          <div class="feature-card">
+            <div class="feature-icon" aria-hidden="true">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><rect x="3" y="4" width="18" height="6" rx="1.5" stroke="currentColor" stroke-width="1.6"/><rect x="3" y="14" width="18" height="6" rx="1.5" stroke="currentColor" stroke-width="1.6"/><circle cx="7" cy="7" r="1" fill="currentColor"/><circle cx="7" cy="17" r="1" fill="currentColor"/></svg>
+            </div>
+            <h3>The API Gateway</h3>
+            <p>A custom API gateway built in Node.js, hosted on Render, for rapid request handling and processing.</p>
+          </div>
+
+          <div class="feature-card">
+            <div class="feature-icon" aria-hidden="true">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 22s7-7.58 7-12.5A7 7 0 105 9.5C5 14.42 12 22 12 22z" stroke="currentColor" stroke-width="1.6"/><circle cx="12" cy="9.5" r="2.2" stroke="currentColor" stroke-width="1.6"/></svg>
+            </div>
+            <h3>Geospatial Data</h3>
+            <p>Built on OpenStreetMap to avoid heavy licensing fees, providing accurate, crowdsourced coverage for 190+ countries.</p>
+          </div>
+
+          <div class="feature-card">
+            <div class="feature-icon" aria-hidden="true">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M4 19V10M12 19V5M20 19v-6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+            </div>
+            <h3>The Dashboard</h3>
+            <p>A single-page application where developers track usage in real time and generate API keys.</p>
+          </div>
+
+          <div class="feature-card">
+            <div class="feature-icon" aria-hidden="true">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><rect x="3" y="6" width="18" height="13" rx="2" stroke="currentColor" stroke-width="1.6"/><path d="M3 10h18" stroke="currentColor" stroke-width="1.6"/></svg>
+            </div>
+            <h3>Payments</h3>
+            <p>Razorpay SDK integration handles secure API subscriptions for both Indian and global markets.</p>
+          </div>
         </div>
-        <pre><code><span class="comment">// The Legacy Way (Expensive)</span>
-<span class="keyword">const</span> url = <span class="string">`https://maps.googleapis.com/maps/api/geocode/json?address=NYC&key=OLD_KEY`</span>;
+      </section>
 
-<span class="comment">// The RapidSafe Maps Way (Fast & Affordable)</span>
-<span class="keyword">const</span> url = <span class="string">`https://rapidmap-api.onrender.com/maps/api/geocode/json?address=NYC&key=rm_live_...`</span>;</code></pre>
-      </div>
+      <section id="drop-in" class="section">
+        <h2><span class="section-num">03</span>The Unfair Advantage: The &ldquo;Drop-In&rdquo; Migration</h2>
+        <p>I knew that the biggest barrier to switching APIs is the headache of rewriting legacy code. Developers don&rsquo;t want to spend three days refactoring their entire app.</p>
+        <p>So, I engineered a feature I call the <strong>&ldquo;Drop-In Replacement.&rdquo;</strong></p>
+        <p>I created an endpoint that mimics standard JSON response structures. If you want to switch to RapidSafe Maps, you barely need to touch your code. You simply swap out the base URL and append your new API key.</p>
 
-      <h2>How to Use It Right Now</h2>
-      <p>Getting started is completely frictionless. You can sign up without a credit card, instantly generate an API key, and test it out right inside the Live API Playground on your dashboard.</p>
-      <p>Here is a standard cURL request to show how simple it is:</p>
-
-      <div class="code-wrapper">
-        <div class="code-header">
-          <div class="dot r"></div><div class="dot y"></div><div class="dot g"></div>
-          <span class="code-filename">Terminal</span>
+        <div class="code-window">
+          <div class="code-header">
+            <div class="code-dots" aria-hidden="true"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span></div>
+            <span class="code-filename">geocode.js</span>
+            <span class="code-lang">JavaScript</span>
+            <button type="button" class="copy-btn" aria-label="Copy code">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><rect x="9" y="9" width="12" height="12" rx="2" stroke="currentColor" stroke-width="1.6"/><path d="M5 15V5a2 2 0 012-2h10" stroke="currentColor" stroke-width="1.6"/></svg>
+              Copy
+            </button>
+          </div>
+          <pre class="code-body"><code
+><span class="cl"><span class="comment">// The Legacy Way (Expensive)</span></span
+><span class="cl"><span class="keyword">const</span> url = <span class="string">`https://maps.googleapis.com/maps/api/geocode/json?address=NYC&amp;key=OLD_KEY`</span>;</span
+><span class="cl"></span
+><span class="cl"><span class="comment">// The RapidSafe Maps Way (Fast &amp; Affordable)</span></span
+><span class="cl"><span class="keyword">const</span> url = <span class="string">`https://rapidmap-api.onrender.com/maps/api/geocode/json?address=NYC&amp;key=rm_live_...`</span>;</span
+></code></pre>
         </div>
-        <pre><code>curl https://rapidmap-api.onrender.com/v1/geocode \
-  -H <span class="string">"x-api-key: rm_live_YOUR_API_KEY"</span> \
-  --data-urlencode <span class="string">"address=1600 Amphitheatre Pkwy"</span></code></pre>
-      </div>
+      </section>
 
-      <h2>The Future of RapidSafe Maps</h2>
-      <p>My goal is to make RapidSafe Maps the default choice for startups shipping location features at scale. I built this tool because it was exactly what I needed as a developer. If you're tired of billing anxiety and want a map stack built for developers, I invite you to try it out.</p>
+      <section id="use-it" class="section">
+        <h2><span class="section-num">04</span>How to Use It Right Now</h2>
+        <p>Getting started is completely frictionless. You can sign up without a credit card, instantly generate an API key, and test it out right inside the Live API Playground on your dashboard.</p>
 
-      <div class="bottom-cta">
-        <h2>Ready to ship your first request?</h2>
-        <p style="margin-bottom: 32px; color: var(--text-muted);">Get 2,500 requests per month completely free. No credit card required.</p>
-        <a href="https://rapidsafemaps.web.app" class="btn-primary" style="padding: 14px 32px; font-size: 1.1rem;" target="_blank">Visit RapidSafe Maps</a>
-      </div>
+        <ol class="steps">
+          <li><span class="step-num">1</span><div><strong>Create an account</strong> — no credit card required to get started.</div></li>
+          <li><span class="step-num">2</span><div><strong>Generate an API key</strong> — instantly, from your dashboard.</div></li>
+          <li><span class="step-num">3</span><div><strong>Send your first request</strong> — using the standard cURL call below.</div></li>
+        </ol>
+
+        <p>Here is a standard cURL request to show how simple it is:</p>
+
+        <div class="code-window">
+          <div class="code-header">
+            <div class="code-dots" aria-hidden="true"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span></div>
+            <span class="code-filename">Terminal</span>
+            <span class="code-lang">bash</span>
+            <button type="button" class="copy-btn" aria-label="Copy code">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><rect x="9" y="9" width="12" height="12" rx="2" stroke="currentColor" stroke-width="1.6"/><path d="M5 15V5a2 2 0 012-2h10" stroke="currentColor" stroke-width="1.6"/></svg>
+              Copy
+            </button>
+          </div>
+          <pre class="code-body"><code
+><span class="cl">curl https://rapidmap-api.onrender.com/v1/geocode \</span
+><span class="cl">  -H <span class="string">"x-api-key: rm_live_YOUR_API_KEY"</span> \</span
+><span class="cl">  --data-urlencode <span class="string">"address=1600 Amphitheatre Pkwy"</span></span
+></code></pre>
+        </div>
+      </section>
+
+      <section id="future" class="section">
+        <h2><span class="section-num">05</span>The Future of RapidSafe Maps</h2>
+        <p>My goal is to make RapidSafe Maps the default choice for startups shipping location features at scale. I built this tool because it was exactly what I needed as a developer. If you&rsquo;re tired of billing anxiety and want a map stack built for developers, I invite you to try it out.</p>
+
+        <div class="bottom-cta">
+          <h3>Ready to ship your first request?</h3>
+          <p>Get 2,500 requests per month completely free. No credit card required.</p>
+          <a href="https://www.rapidsafe.in" class="btn btn--primary btn--lg" target="_blank" rel="noopener">Visit RapidSafe Maps</a>
+        </div>
+      </section>
+
+      <!-- Creator section -->
+      <section class="creator" aria-labelledby="creator-heading">
+        <span class="badge">
+          <span class="badge-dot" aria-hidden="true"></span>
+          Meet the Creator
+        </span>
+        <h2 id="creator-heading" class="creator-heading">Built By</h2>
+
+        <div class="creator-card">
+          <div class="creator-photo-wrap">
+            <img src="https://i.ibb.co/CsYs31h3/IMG-20250920-001644-778.webp" alt="Mohammed Saqib Ahmed" class="creator-photo" loading="lazy" width="120" height="120">
+          </div>
+          <div class="creator-body">
+            <h3 class="creator-name">Mohammed Saqib Ahmed</h3>
+            <p class="creator-role">Student Developer &middot; Builder of RapidSafe Maps</p>
+            <p class="creator-bio">RapidSafe Maps was built from the perspective of a developer who simply wanted accessible, predictable mapping infrastructure — without unpredictable bills or unnecessary complexity standing in the way of shipping.</p>
+
+            <!-- Creator profile links: replace the placeholder href values when profiles are ready. -->
+            <div class="creator-social" role="group" aria-label="Creator profile links">
+              <a class="profile-btn" href="https://example.com/x" target="_blank" rel="noopener" aria-label="X / Twitter" title="Profile link will be added later">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M18.9 2H22l-7.6 8.7L23 22h-6.9l-5.4-6.6L4.5 22H1.3l8.1-9.3L1 2h7l4.9 6z"/></svg>
+              </a>
+              <a class="profile-btn" href="https://example.com/linkedin" target="_blank" rel="noopener" aria-label="LinkedIn" title="Profile link will be added later">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M6.94 5a2 2 0 11-4-.02 2 2 0 014 .02zM7 8.48H3V21h4V8.48zm6.32 0H9.34V21h3.94v-6.57c0-3.66 4.77-3.96 4.77 0V21H22v-7.93c0-6.17-7.06-5.95-8.68-2.91V8.48z"/></svg>
+              </a>
+              <a class="profile-btn" href="https://example.com/github" target="_blank" rel="noopener" aria-label="GitHub" title="Profile link will be added later">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .5C5.73.5.5 5.73.5 12c0 5.08 3.29 9.39 7.86 10.91.58.11.79-.25.79-.56 0-.28-.01-1.02-.02-2-3.2.7-3.88-1.54-3.88-1.54-.53-1.34-1.29-1.7-1.29-1.7-1.06-.72.08-.71.08-.71 1.17.08 1.78 1.2 1.78 1.2 1.04 1.78 2.73 1.27 3.4.97.1-.75.41-1.27.74-1.56-2.55-.29-5.23-1.28-5.23-5.68 0-1.25.45-2.28 1.19-3.08-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.18 1.18a11 11 0 015.8 0c2.2-1.49 3.17-1.18 3.17-1.18.64 1.59.24 2.76.12 3.05.74.8 1.18 1.83 1.18 3.08 0 4.41-2.69 5.38-5.25 5.67.42.36.79 1.08.79 2.17 0 1.57-.01 2.83-.01 3.22 0 .31.21.68.8.56A10.52 10.52 0 0023.5 12C23.5 5.73 18.27.5 12 .5z"/></svg>
+              </a>
+              <a class="profile-btn" href="https://example.com/instagram" target="_blank" rel="noopener" aria-label="Instagram" title="Profile link will be added later">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="5" stroke="currentColor" stroke-width="1.6"/><circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="1.6"/><circle cx="17.3" cy="6.7" r="1" fill="currentColor"/></svg>
+              </a>
+              <a class="profile-btn" href="https://example.com/youtube" target="_blank" rel="noopener" aria-label="YouTube" title="Profile link will be added later">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="2" y="5" width="20" height="14" rx="4" stroke="currentColor" stroke-width="1.6"/><path d="M10 9l6 3-6 3V9z" fill="currentColor"/></svg>
+              </a>
+              <a class="profile-btn" href="mailto:hello@example.com" aria-label="Email" title="Email address will be added later">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M3 6h18v12H3V6z" stroke="currentColor" stroke-width="1.6"/><path d="M3 7l9 6 9-6" stroke="currentColor" stroke-width="1.6"/></svg>
+              </a>
+            </div>
+            <!-- End creator profile links -->
+          </div>
+        </div>
+
+        <!-- Person → Product → Website -->
+        <div class="identity-card">
+          <div class="identity-node">
+            <span class="identity-node-label">Creator</span>
+            <span class="identity-node-value">Mohammed Saqib Ahmed</span>
+          </div>
+          <span class="identity-arrow" aria-hidden="true">&rarr;</span>
+          <div class="identity-node">
+            <span class="identity-node-label">Product</span>
+            <span class="identity-node-value">RapidSafe Maps</span>
+          </div>
+          <span class="identity-arrow" aria-hidden="true">&rarr;</span>
+          <div class="identity-node">
+            <span class="identity-node-label">Website</span>
+            <a class="identity-node-value identity-node-link" href="https://www.rapidsafe.in" target="_blank" rel="noopener">www.rapidsafe.in</a>
+          </div>
+        </div>
+      </section>
+
+      <!-- Product card -->
+      <section class="product" aria-labelledby="product-heading">
+        <div class="product-inner">
+          <span class="badge badge--dark">
+            <span class="badge-dot" aria-hidden="true"></span>
+            The Product
+          </span>
+          <h2 id="product-heading" class="product-heading">RapidSafe Maps</h2>
+          <p class="product-desc">Developer-first mapping infrastructure for applications that need reliable location intelligence without unnecessary complexity.</p>
+
+          <ul class="chip-grid">
+            <li class="chip">Geocoding</li>
+            <li class="chip">Maps</li>
+            <li class="chip">API Infrastructure</li>
+            <li class="chip">Developer Dashboard</li>
+            <li class="chip">Usage Monitoring</li>
+            <li class="chip">API Keys</li>
+          </ul>
+
+          <a href="https://www.rapidsafe.in" class="btn btn--primary btn--md" target="_blank" rel="noopener">Explore RapidSafe Maps</a>
+        </div>
+      </section>
 
     </article>
-  </main>
 
-  <footer style="text-align: center; padding: 40px 20px; border-top: 1px solid var(--border); color: var(--text-muted); font-size: 0.9rem;">
-    <p>© 2026 RapidSafe Maps. Built by Mohammed Saqib Ahmed.</p>
-  </footer>
+    <!-- Info card -->
+    <aside class="info-rail" aria-label="About RapidSafe Maps">
+      <div class="info-sticky">
+        <div class="info-card">
+          <span class="info-card-eyebrow">RapidSafe Maps</span>
+          <p class="info-card-text">Developer-first mapping infrastructure.</p>
+          <a href="https://www.rapidsafe.in" class="info-card-link" target="_blank" rel="noopener">www.rapidsafe.in</a>
+          <a href="https://www.rapidsafe.in" class="btn btn--primary btn--sm btn--block" target="_blank" rel="noopener">Explore RapidSafe Maps</a>
+        </div>
+      </div>
+    </aside>
 
+  </div>
+
+  <!-- Final CTA -->
+  <section class="final-cta">
+    <div class="final-cta-card">
+      <div class="final-cta-glow" aria-hidden="true"></div>
+      <h2>Build with RapidSafe Maps.</h2>
+      <p>Simple APIs. Developer-first infrastructure. Built for modern applications.</p>
+      <div class="final-cta-actions">
+        <a href="https://www.rapidsafe.in" class="btn btn--primary btn--lg" target="_blank" rel="noopener">Explore RapidSafe Maps</a>
+        <a href="blogs.html" class="btn btn--ghost btn--lg">Read More Articles</a>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<!-- Footer -->
+<footer class="footer">
+  <div class="footer-inner">
+    <div class="footer-brand">
+      <span class="brand-name">RapidSafe<span class="brand-accent">Maps</span></span>
+      <p>Developer-first mapping infrastructure.</p>
+    </div>
+
+    <nav class="footer-links" aria-label="Footer">
+      <a href="index.html">Home</a>
+      <a href="maps-api.html">Maps API</a>
+      <a href="docs.html">Documentation</a>
+      <a href="blogs.html">Blogs</a>
+      <a href="about.html">About</a>
+    </nav>
+
+    <a href="https://www.rapidsafe.in" class="footer-domain" target="_blank" rel="noopener">www.rapidsafe.in</a>
+  </div>
+  <div class="footer-bottom">
+    <p>&copy; 2026 RapidSafe Maps. All rights reserved. Built by Mohammed Saqib Ahmed.</p>
+  </div>
+</footer>
+
+<script>
+(function () {
+  "use strict";
+  var btn = document.getElementById("navToggleBtn");
+  var menu = document.getElementById("mobile-menu");
+  if (!btn || !menu) return;
+
+  function isOpen() { return menu.classList.contains("is-open"); }
+
+  function openMenu() {
+    menu.classList.add("is-open");
+    btn.classList.add("is-active");
+    btn.setAttribute("aria-expanded", "true");
+  }
+
+  function closeMenu() {
+    menu.classList.remove("is-open");
+    btn.classList.remove("is-active");
+    btn.setAttribute("aria-expanded", "false");
+  }
+
+  btn.addEventListener("click", function (e) {
+    e.stopPropagation();
+    isOpen() ? closeMenu() : openMenu();
+  });
+
+  menu.addEventListener("click", function (e) {
+    if (e.target.closest("a")) closeMenu();
+  });
+
+  document.addEventListener("click", function (e) {
+    if (isOpen() && !menu.contains(e.target) && e.target !== btn && !btn.contains(e.target)) {
+      closeMenu();
+    }
+  });
+
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape" && isOpen()) closeMenu();
+  });
+
+  window.addEventListener("resize", function () {
+    if (window.innerWidth > 720 && isOpen()) closeMenu();
+  });
+
+
+  /* ---------------------------------------------------------------
+     RapidSafe shared interactions: clipboard + 3D tilt + placeholders
+     --------------------------------------------------------------- */
+  function getCodeText(button) {
+    var windowEl = button.closest('.code-window');
+    if (!windowEl) return '';
+    var code = windowEl.querySelector('.code-body code');
+    return code ? code.innerText : '';
+  }
+
+  function setCopyState(button, copied) {
+    if (!button) return;
+    button.classList.toggle('is-copied', copied);
+    var label = button.querySelector('.copy-label');
+    if (label) label.textContent = copied ? 'Copied' : 'Copy';
+    else button.setAttribute('data-copy-label', copied ? 'Copied' : 'Copy');
+    button.setAttribute('aria-label', copied ? 'Code copied' : 'Copy code');
+  }
+
+  document.querySelectorAll('.copy-btn').forEach(function (button) {
+    if (!button.querySelector('.copy-label')) {
+      var text = Array.from(button.childNodes).find(function (node) {
+        return node.nodeType === 3 && node.textContent.trim();
+      });
+      if (text) {
+        var span = document.createElement('span');
+        span.className = 'copy-label';
+        span.textContent = text.textContent.trim();
+        text.replaceWith(span);
+      }
+    }
+
+    button.addEventListener('click', async function () {
+      var text = getCodeText(button);
+      if (!text) return;
+      try {
+        await navigator.clipboard.writeText(text);
+      } catch (err) {
+        var area = document.createElement('textarea');
+        area.value = text;
+        area.setAttribute('readonly', '');
+        area.style.position = 'fixed';
+        area.style.opacity = '0';
+        document.body.appendChild(area);
+        area.select();
+        document.execCommand('copy');
+        area.remove();
+      }
+      setCopyState(button, true);
+      window.setTimeout(function () { setCopyState(button, false); }, 1600);
+    });
+  });
+
+  /* Subtle desktop 3D card movement. Disabled for touch/reduced-motion. */
+  if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches &&
+      window.matchMedia('(pointer: fine)').matches) {
+    document.querySelectorAll('[data-tilt]').forEach(function (card) {
+      var max = 5;
+      card.addEventListener('pointermove', function (event) {
+        var rect = card.getBoundingClientRect();
+        var x = (event.clientX - rect.left) / rect.width;
+        var y = (event.clientY - rect.top) / rect.height;
+        var rotateY = (x - 0.5) * max * 2;
+        var rotateX = (0.5 - y) * max * 2;
+        card.style.setProperty('--tilt-x', rotateX.toFixed(2) + 'deg');
+        card.style.setProperty('--tilt-y', rotateY.toFixed(2) + 'deg');
+        card.classList.add('is-tilting');
+      });
+      card.addEventListener('pointerleave', function () {
+        card.style.removeProperty('--tilt-x');
+        card.style.removeProperty('--tilt-y');
+        card.classList.remove('is-tilting');
+      });
+    });
+  }
+
+  /* Keep placeholder social links harmless until real profiles are supplied. */
+  document.querySelectorAll('a[href*="example.com"], a[href="mailto:hello@example.com"]').forEach(function (link) {
+    link.addEventListener('click', function (event) {
+      event.preventDefault();
+    });
+    link.setAttribute('aria-disabled', 'true');
+    link.setAttribute('tabindex', '-1');
+    link.classList.add('is-placeholder');
+  });
+
+})();
+</script>
 </body>
 </html>
