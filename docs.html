@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Documentation — RapidSafe Maps</title>
+<meta name="description" content="RapidSafe Maps documentation: getting started, authentication, endpoints, error handling, rate limits, and SDKs.">
+<meta name="theme-color" content="#FF6B00">
+<meta name="robots" content="index, follow">
+<link rel="canonical" href="https://www.rapidsafe.in/docs.html">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+<link rel="stylesheet" href="article.css">
+</head>
+<body>
+
+<a class="skip-link" href="#main-content">Skip to content</a>
+
+<div class="bg-layer" aria-hidden="true">
+  <div class="bg-grid"></div>
+  <div class="bg-glow bg-glow--top"></div>
+  <div class="bg-glow bg-glow--mid"></div>
+  <div class="bg-dots"></div>
+</div>
+
+<header class="navbar" id="top">
+  <nav class="navbar-inner" aria-label="Primary">
+    <a href="index.html" class="brand">
+      <span class="brand-mark" aria-hidden="true">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M12 2L3 7.5V16.5L12 22L21 16.5V7.5L12 2Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+          <path d="M12 2V12M12 12L21 7.5M12 12L3 7.5M12 12V22" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+        </svg>
+      </span>
+      <span class="brand-name">RapidSafe<span class="brand-accent">Maps</span></span>
+    </a>
+
+    <button type="button" class="nav-toggle" id="navToggleBtn" aria-label="Toggle menu" aria-expanded="false" aria-controls="mobile-menu">
+      <span class="nav-toggle-bars" aria-hidden="true">
+        <span class="nav-toggle-bar"></span>
+        <span class="nav-toggle-bar"></span>
+        <span class="nav-toggle-bar"></span>
+      </span>
+    </button>
+
+    <div class="navbar-links" id="mobile-menu">
+      <a href="index.html" class="nav-link">Home</a>
+      <a href="maps-api.html" class="nav-link">Maps API</a>
+      <a href="docs.html" class="nav-link is-active" aria-current="page">Documentation</a>
+      <a href="blogs.html" class="nav-link">Blogs</a>
+      <a href="about.html" class="nav-link">About</a>
+      <a href="https://www.rapidsafe.in" class="btn btn--primary btn--sm" target="_blank" rel="noopener">Visit RapidSafe</a>
+    </div>
+  </nav>
+</header>
+
+<main id="main-content">
+
+  <section class="hero">
+    <div class="hero-inner">
+      <div class="hero-card" data-tilt>
+        <div class="hero-card-glow" aria-hidden="true"></div>
+        <span class="badge">
+          <span class="badge-dot" aria-hidden="true"></span>
+          Documentation
+        </span>
+        <h1 class="hero-title">Everything You Need to <span class="hero-title-accent">Ship Faster</span></h1>
+        <p class="hero-subtitle">Guides and reference material for integrating the RapidSafe Maps API into your application.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Layout: docs sidebar / content -->
+  <div class="layout layout--docs">
+
+    <!-- Docs sidebar nav -->
+    <aside class="toc" aria-label="Documentation sections">
+      <div class="toc-sticky docs-nav-sticky">
+        <span class="toc-label">Contents</span>
+        <ol class="toc-list">
+          <li><a href="#getting-started"><span class="toc-num">01</span>Getting Started</a></li>
+          <li><a href="#authentication"><span class="toc-num">02</span>Authentication</a></li>
+          <li><a href="#making-requests"><span class="toc-num">03</span>Making Requests</a></li>
+          <li><a href="#endpoints"><span class="toc-num">04</span>Endpoints</a></li>
+          <li><a href="#errors"><span class="toc-num">05</span>Error Handling</a></li>
+          <li><a href="#rate-limits"><span class="toc-num">06</span>Rate Limits</a></li>
+          <li><a href="#sdks"><span class="toc-num">07</span>SDKs &amp; Libraries</a></li>
+        </ol>
+      </div>
+    </aside>
+
+    <!-- Docs content -->
+    <article class="content">
+
+      
+      <section id="getting-started" class="section">
+        <h2><span class="section-num">01</span>Getting Started</h2>
+        <p>Create a free account, generate an API key from your dashboard, and you're ready to make your first request — no credit card required.</p>
+        <ol class="steps">
+          <li><span class="step-num">1</span><div><strong>Sign up</strong> for a free account.</div></li>
+          <li><span class="step-num">2</span><div><strong>Generate an API key</strong> from your dashboard.</div></li>
+          <li><span class="step-num">3</span><div><strong>Make a request</strong> to any endpoint using your key.</div></li>
+        </ol>
+      </section>
+
+      
+      <section id="authentication" class="section">
+        <h2><span class="section-num">02</span>Authentication</h2>
+        <p>Every request is authenticated with an API key, passed as a header. Keys are scoped per project and can be rotated at any time from your dashboard.</p>
+
+        <div class="code-window">
+          <div class="code-header">
+            <div class="code-dots" aria-hidden="true"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span></div>
+            <span class="code-filename">Terminal</span>
+            <span class="code-lang">bash</span>
+            <button type="button" class="copy-btn" aria-label="Copy code">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><rect x="9" y="9" width="12" height="12" rx="2" stroke="currentColor" stroke-width="1.6"/><path d="M5 15V5a2 2 0 012-2h10" stroke="currentColor" stroke-width="1.6"/></svg>
+              Copy
+            </button>
+          </div>
+          <pre class="code-body"><code
+><span class="cl"><span class="comment"># Pass your key on every request</span></span
+><span class="cl">-H <span class="string">"x-api-key: rm_live_YOUR_API_KEY"</span></span
+></code></pre>
+        </div>
+      </section>
+
+      
+      <section id="making-requests" class="section">
+        <h2><span class="section-num">03</span>Making Requests</h2>
+        <p>All endpoints accept standard query parameters and return JSON. Base URL: <code style="font-family:var(--font-mono); font-size:13px; background:var(--surface-2); padding:2px 6px; border-radius:4px;">https://rapidmap-api.onrender.com</code></p>
+      </section>
+
+      
+      <section id="endpoints" class="section">
+        <h2><span class="section-num">04</span>Endpoints</h2>
+        <p>See the full endpoint reference — geocoding, reverse geocoding, static tiles, and places — on the <a href="maps-api.html" style="color:var(--accent); text-decoration:underline;">Maps API page</a>.</p>
+      </section>
+
+      
+      <section id="errors" class="section">
+        <h2><span class="section-num">05</span>Error Handling</h2>
+        <p>Errors return a standard JSON body with an HTTP status code, an error code, and a human-readable message to help you debug quickly.</p>
+      </section>
+
+      
+      <section id="rate-limits" class="section">
+        <h2><span class="section-num">06</span>Rate Limits</h2>
+        <p>Rate limits vary by plan. Free tier accounts include 2,500 requests per month; higher tiers raise this ceiling. Current usage is visible from your dashboard at all times.</p>
+      </section>
+
+      
+      <section id="sdks" class="section" style="border-bottom:none;">
+        <h2><span class="section-num">07</span>SDKs &amp; Libraries</h2>
+        <p>Official SDKs are on the roadmap. Until then, any standard HTTP client works — the API returns plain JSON over REST.</p>
+      </section>
+
+    </article>
+  </div>
+
+</main>
+
+<footer class="footer">
+  <div class="footer-inner">
+    <div class="footer-brand">
+      <span class="brand-name">RapidSafe<span class="brand-accent">Maps</span></span>
+      <p>Developer-first mapping infrastructure.</p>
+    </div>
+
+    <nav class="footer-links" aria-label="Footer">
+      <a href="index.html">Home</a>
+      <a href="maps-api.html">Maps API</a>
+      <a href="docs.html">Documentation</a>
+      <a href="blogs.html">Blogs</a>
+      <a href="about.html">About</a>
+    </nav>
+
+    <a href="https://www.rapidsafe.in" class="footer-domain" target="_blank" rel="noopener">www.rapidsafe.in</a>
+  </div>
+  <div class="footer-bottom">
+    <p>&copy; 2026 RapidSafe Maps. All rights reserved. Built by Mohammed Saqib Ahmed.</p>
+  </div>
+</footer>
+
+<script>
+(function () {
+  "use strict";
+  var btn = document.getElementById("navToggleBtn");
+  var menu = document.getElementById("mobile-menu");
+  if (!btn || !menu) return;
+
+  function isOpen() { return menu.classList.contains("is-open"); }
+
+  function openMenu() {
+    menu.classList.add("is-open");
+    btn.classList.add("is-active");
+    btn.setAttribute("aria-expanded", "true");
+  }
+
+  function closeMenu() {
+    menu.classList.remove("is-open");
+    btn.classList.remove("is-active");
+    btn.setAttribute("aria-expanded", "false");
+  }
+
+  btn.addEventListener("click", function (e) {
+    e.stopPropagation();
+    isOpen() ? closeMenu() : openMenu();
+  });
+
+  menu.addEventListener("click", function (e) {
+    if (e.target.closest("a")) closeMenu();
+  });
+
+  document.addEventListener("click", function (e) {
+    if (isOpen() && !menu.contains(e.target) && e.target !== btn && !btn.contains(e.target)) {
+      closeMenu();
+    }
+  });
+
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape" && isOpen()) closeMenu();
+  });
+
+  window.addEventListener("resize", function () {
+    if (window.innerWidth > 720 && isOpen()) closeMenu();
+  });
+
+
+  /* ---------------------------------------------------------------
+     RapidSafe shared interactions: clipboard + 3D tilt + placeholders
+     --------------------------------------------------------------- */
+  function getCodeText(button) {
+    var windowEl = button.closest('.code-window');
+    if (!windowEl) return '';
+    var code = windowEl.querySelector('.code-body code');
+    return code ? code.innerText : '';
+  }
+
+  function setCopyState(button, copied) {
+    if (!button) return;
+    button.classList.toggle('is-copied', copied);
+    var label = button.querySelector('.copy-label');
+    if (label) label.textContent = copied ? 'Copied' : 'Copy';
+    else button.setAttribute('data-copy-label', copied ? 'Copied' : 'Copy');
+    button.setAttribute('aria-label', copied ? 'Code copied' : 'Copy code');
+  }
+
+  document.querySelectorAll('.copy-btn').forEach(function (button) {
+    if (!button.querySelector('.copy-label')) {
+      var text = Array.from(button.childNodes).find(function (node) {
+        return node.nodeType === 3 && node.textContent.trim();
+      });
+      if (text) {
+        var span = document.createElement('span');
+        span.className = 'copy-label';
+        span.textContent = text.textContent.trim();
+        text.replaceWith(span);
+      }
+    }
+
+    button.addEventListener('click', async function () {
+      var text = getCodeText(button);
+      if (!text) return;
+      try {
+        await navigator.clipboard.writeText(text);
+      } catch (err) {
+        var area = document.createElement('textarea');
+        area.value = text;
+        area.setAttribute('readonly', '');
+        area.style.position = 'fixed';
+        area.style.opacity = '0';
+        document.body.appendChild(area);
+        area.select();
+        document.execCommand('copy');
+        area.remove();
+      }
+      setCopyState(button, true);
+      window.setTimeout(function () { setCopyState(button, false); }, 1600);
+    });
+  });
+
+  /* Subtle desktop 3D card movement. Disabled for touch/reduced-motion. */
+  if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches &&
+      window.matchMedia('(pointer: fine)').matches) {
+    document.querySelectorAll('[data-tilt]').forEach(function (card) {
+      var max = 5;
+      card.addEventListener('pointermove', function (event) {
+        var rect = card.getBoundingClientRect();
+        var x = (event.clientX - rect.left) / rect.width;
+        var y = (event.clientY - rect.top) / rect.height;
+        var rotateY = (x - 0.5) * max * 2;
+        var rotateX = (0.5 - y) * max * 2;
+        card.style.setProperty('--tilt-x', rotateX.toFixed(2) + 'deg');
+        card.style.setProperty('--tilt-y', rotateY.toFixed(2) + 'deg');
+        card.classList.add('is-tilting');
+      });
+      card.addEventListener('pointerleave', function () {
+        card.style.removeProperty('--tilt-x');
+        card.style.removeProperty('--tilt-y');
+        card.classList.remove('is-tilting');
+      });
+    });
+  }
+
+  /* Keep placeholder social links harmless until real profiles are supplied. */
+  document.querySelectorAll('a[href*="example.com"], a[href="mailto:hello@example.com"]').forEach(function (link) {
+    link.addEventListener('click', function (event) {
+      event.preventDefault();
+    });
+    link.setAttribute('aria-disabled', 'true');
+    link.setAttribute('tabindex', '-1');
+    link.classList.add('is-placeholder');
+  });
+
+})();
+</script>
+</body>
+</html>
