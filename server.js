@@ -1129,10 +1129,15 @@ app.get(/^\/(?!v1\/|maps\/).*/, (req, res) => {
 // Catches anything thrown/rejected in a route that wasn't already handled
 // locally, so a bug returns a clean JSON 500 instead of Express's default
 // HTML error page (which can leak stack traces in some configurations).
-app.use((err, req, res, next) => {
-  console.error('Unhandled error:', err);
-  if (res.headersSent) return next(err);
-  res.status(500).json({ error: 'Internal server error' });
+// ================= SEO DOMAIN REDIRECT =================
+// Permanently redirects legacy Firebase URLs and the naked domain
+// directly to www.rapidsafe.in to fix Googlebot indexing loops.
+app.use((req, res, next) => {
+  const host = req.hostname || '';
+  if (host.includes('web.app') || host.includes('firebaseapp.com') || host === 'rapidsafe.in') {
+    return res.redirect(301, `https://www.rapidsafe.in${req.originalUrl}`);
+  }
+  next();
 });
 
 const PORT = process.env.PORT || 3000;
